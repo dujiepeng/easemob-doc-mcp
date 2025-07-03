@@ -80,14 +80,17 @@ python main.py --mode both
    ```
 
 2. 在 Cursor 中配置 MCP：
-   - 名称：文档搜索服务
-   - 端点：stdio
-   - 说明：搜索文档内容并获取文档
-   - 可用工具：
-     - search_platform_docs(platform: str) - 搜索特定平台的文档
-     - get_document_content(doc_path: str, keyword: str = "") - 获取文档内容和关键字搜索结果
 
-3. 使用示例：
+```
+    "docs-search": {
+          "command": "python",
+          "args": ["/Users/dujiepeng/Desktop/easemob_docs_mcp/fastmcp_server/run_mcp.py"],
+          "env": {},
+          "description": "环信文档搜索服务 - 按平台搜索文档并获取内容"
+    }
+```
+
+1. 使用示例：
    ```python
    # 搜索Android平台文档
    docs = await mcp.call("search_platform_docs", {"platform": "android"})
