@@ -109,6 +109,8 @@ async function handleMCPRequest() {
           // 处理工具调用
           const { name, arguments: args } = request.params;
           
+          console.error(`🔧 调用工具: ${name}, 参数:`, args);
+          
           try {
             let result;
             
@@ -118,12 +120,14 @@ async function handleMCPRequest() {
                 if (!platform) {
                   throw new Error('platform参数是必需的');
                 }
-                const results = await docSearchClient.searchDocs(platform);
+                console.error(`🔍 搜索平台: ${platform}`);
+                const response = await docSearchClient.searchDocs(platform);
+                console.error(`✅ 搜索结果:`, response);
                 result = {
                   content: [
                     {
                       type: 'text',
-                      text: JSON.stringify(results, null, 2)
+                      text: JSON.stringify(response, null, 2)
                     }
                   ]
                 };
@@ -185,6 +189,7 @@ async function handleMCPRequest() {
             stdout.write(JSON.stringify(response) + '\n');
             
           } catch (error) {
+            console.error(`❌ 工具调用失败:`, error);
             const response = {
               jsonrpc: '2.0',
               id: request.id,
