@@ -1,11 +1,12 @@
 {
-  "name": "easemob-doc-search",
+  "name": "@easemob/docs-mcp",
   "version": "1.0.0",
   "description": "环信文档搜索服务 - 支持多平台文档搜索和SSE流式响应",
   "main": "dist/index.js",
   "types": "dist/index.d.ts",
   "bin": {
-    "easemob-doc-search": "dist/cli.js"
+    "easemob-doc-search": "dist/cli.js",
+    "@easemob/docs-mcp": "dist/mcp-server.js"
   },
   "scripts": {
     "build": "tsc",
@@ -20,7 +21,8 @@
     "mcp:dev": "ts-node src/mcp-server.ts",
     "mcp-client": "node dist/mcp-client.js",
     "mcp-client:dev": "ts-node src/mcp-client.ts",
-    "setup-cursor": "node scripts/setup-cursor.js"
+    "setup-cursor": "node scripts/setup-cursor.js",
+    "postinstall": "node scripts/postinstall.js"
   },
   "keywords": [
     "easemob",
@@ -29,7 +31,9 @@
     "sse",
     "streaming",
     "api",
-    "mcp"
+    "mcp",
+    "cursor",
+    "model-context-protocol"
   ],
   "author": "Easemob",
   "license": "MIT",
@@ -72,6 +76,10 @@
   "files": [
     "dist",
     "README.md",
-    "LICENSE"
-  ]
+    "LICENSE",
+    "scripts"
+  ],
+  "publishConfig": {
+    "access": "public"
+  }
 } 

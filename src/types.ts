@@ -1,24 +1,30 @@
-// 文档搜索结果类型
+// 文档搜索结果
 export interface DocSearchResult {
+  platform: string;
   results: string[];
+  total: number;
+  searchTime: number;
 }
 
-// 文档内容类型
+// 文档内容
 export interface DocContent {
-  content: string | null;
   docPath: string;
+  content?: string;
   matches: DocMatch[];
   error?: string;
+  contentLength?: number;
+  matchesCount?: number;
 }
 
-// 文档匹配项类型
+// 文档匹配
 export interface DocMatch {
   lineNumber: number;
-  context: string;
   line: string;
+  context: string;
+  keyword?: string;
 }
 
-// SSE事件类型
+// SSE事件
 export interface SSEEvent {
   type: 'start' | 'progress' | 'results_batch' | 'complete' | 'error' | 'end' | 'doc_info' | 'search_start' | 'match' | 'full_content';
   message?: string;
@@ -35,7 +41,7 @@ export interface SSEEvent {
   content?: string;
 }
 
-// 客户端配置选项
+// 客户端选项
 export interface ClientOptions {
   baseUrl?: string;
   timeout?: number;
@@ -44,19 +50,19 @@ export interface ClientOptions {
 
 // 搜索选项
 export interface SearchOptions {
-  platform: string;
-  useSSE?: boolean;
+  headers?: Record<string, string>;
 }
 
-// 文档内容获取选项
+// 文档内容选项
 export interface DocContentOptions {
-  path: string;
   keyword?: string;
-  useSSE?: boolean;
+  headers?: Record<string, string>;
 }
 
-// 健康检查响应
+// 健康检查
 export interface HealthCheck {
   status: string;
   service: string;
+  version?: string;
+  timestamp?: string;
 } 

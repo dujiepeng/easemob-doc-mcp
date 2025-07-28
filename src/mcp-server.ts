@@ -1,3 +1,5 @@
+#!/usr/bin/env node
+
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DocSearchService } from './services/doc-search.service';
@@ -7,11 +9,6 @@ const server = new Server(
   {
     name: 'easemob-doc-search',
     version: '1.0.0',
-  },
-  {
-    capabilities: {
-      tools: {},
-    },
   }
 );
 
@@ -19,7 +16,7 @@ const server = new Server(
 const docSearchService = new DocSearchService();
 
 // 注册工具：搜索平台文档
-server.setRequestHandler('tools/call', async (request) => {
+(server as any).setRequestHandler('tools/call', async (request: any) => {
   const { name, arguments: args } = request.params;
 
   switch (name) {

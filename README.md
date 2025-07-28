@@ -1,30 +1,35 @@
 # 环信文档搜索服务
 
-这是一个基于 **Node.js** 构建的文档搜索服务，支持多平台文档搜索和 SSE 流式响应。现在可以作为 npm 包使用！
+一个基于Node.js的环信文档搜索服务，支持多平台文档搜索、SSE流式响应和Model Context Protocol (MCP)。
 
-## ✨ 功能特点
+## ✨ 特性
 
-- 🔍 按平台搜索文档（Android、iOS、Web、Flutter等）
-- 📄 获取文档全文内容
-- 🔎 在文档中搜索关键字并返回上下文
-- 🌊 支持 SSE（Server-Sent Events）流式响应
-- 🚀 纯 Node.js 实现，无需 Python 环境
-- 📦 可作为 npm 包使用
-- 🖥️ 提供命令行工具
-- 🔧 支持 MCP（Model Context Protocol）
+- 🔍 **多平台文档搜索**: 支持Android、iOS、Web、Flutter、React Native等平台
+- 📡 **SSE流式响应**: 实时流式返回搜索结果
+- 🤖 **MCP协议支持**: 与Cursor等AI编辑器无缝集成
+- 📦 **npm包支持**: 可直接通过npx使用
+- 🐳 **Docker部署**: 支持容器化部署
+- 🔧 **RESTful API**: 提供完整的HTTP API接口
 
-## 📦 作为 npm 包使用
+## 🚀 快速开始
 
-### 安装
+### 作为npm包使用
+
+#### 安装和使用
 
 ```bash
-npm install easemob-doc-search
+# 直接使用npx
+npx @easemob/docs-mcp@latest
+
+# 或者全局安装
+npm install -g @easemob/docs-mcp
+easemob-doc-search --help
 ```
 
-### 基本使用
+#### 基本使用
 
 ```javascript
-const EasemobDocSearchClient = require('easemob-doc-search');
+const EasemobDocSearchClient = require('@easemob/docs-mcp');
 
 // 创建客户端
 const client = new EasemobDocSearchClient({
@@ -36,261 +41,242 @@ const result = await client.searchDocs('android');
 console.log(`找到 ${result.results.length} 个文档`);
 
 // 获取文档内容
-const content = await client.getDocContent('android/overview.md', '初始化');
-console.log(`文档长度: ${content.content?.length} 字符`);
+const content = await client.getDocContent('android/quickstart.md');
+console.log(content.content);
 ```
 
-### SSE 流式使用
+#### SSE流式使用
 
 ```javascript
-// 流式搜索文档
-const stream = client.searchDocsStream('android');
-for await (const event of stream) {
+const EasemobDocSearchClient = require('@easemob/docs-mcp');
+
+const client = new EasemobDocSearchClient({
+  baseUrl: 'http://localhost:8000'
+});
+
+// 流式搜索
+for await (const event of client.searchDocsStream('android')) {
   switch (event.type) {
     case 'start':
-      console.log(`📡 ${event.message}`);
+      console.log('开始搜索...');
       break;
     case 'progress':
-      console.log(`📊 ${event.message}`);
+      console.log(`进度: ${event.message}`);
       break;
     case 'results_batch':
-      console.log(`📄 批次 ${event.batch}/${event.total_batches}:`);
-      event.data?.forEach(doc => console.log(`   - ${doc}`));
+      console.log(`找到 ${event.data?.length || 0} 个文档`);
       break;
     case 'complete':
-      console.log(`✅ 搜索完成，共找到 ${event.total_results} 个文档`);
-      break;
-  }
-}
-
-// 流式获取文档内容
-const contentStream = client.getDocContentStream('android/overview.md', '初始化');
-for await (const event of contentStream) {
-  switch (event.type) {
-    case 'doc_info':
-      console.log(`📄 文档: ${event.docPath}, 长度: ${event.content_length} 字符`);
-      break;
-    case 'match':
-      console.log(`📍 匹配 ${event.match_index}/${event.total_matches}: ${event.data.line}`);
+      console.log('搜索完成');
       break;
   }
 }
 ```
 
-## 🖥️ 命令行工具
-
-### 安装全局命令
+### 命令行工具
 
 ```bash
-npm install -g easemob-doc-search
-```
-
-### 使用命令
-
-```bash
-# 健康检查
-easemob-doc-search health
-
 # 搜索文档
-easemob-doc-search search android
-
-# 流式搜索
-easemob-doc-search search android --stream
+npx @easemob/docs-mcp@latest search android
 
 # 获取文档内容
-easemob-doc-search content android/overview.md
+npx @easemob/docs-mcp@latest content android/quickstart.md
 
-# 搜索文档内容
-easemob-doc-search content android/overview.md --keyword 初始化
+# 健康检查
+npx @easemob/docs-mcp@latest health
 
-# 流式获取内容
-easemob-doc-search content android/overview.md --keyword 初始化 --stream
+# 流式搜索
+npx @easemob/docs-mcp@latest stream-search android
 
 # 启动服务器
-easemob-doc-search serve --port 8000 --mode api
-
-# 获取统计信息
-easemob-doc-search stats
+npx @easemob/docs-mcp@latest serve --port 8000 --mode both
 ```
 
-## 🚀 本地开发
+## 🎯 在Cursor中使用
+
+### 自动配置
+
+```bash
+# 运行配置脚本
+npx @easemob/docs-mcp@latest setup-cursor
+```
+
+### 手动配置
+
+在Cursor的MCP配置文件中添加：
+
+```json
+{
+  "easemob-docs": {
+    "command": "npx",
+    "args": ["@easemob/docs-mcp@latest"]
+  }
+}
+```
+
+### 使用示例
+
+在Cursor中，你可以直接使用以下MCP工具：
+
+- `search_platform_docs`: 搜索平台文档
+- `get_document_content`: 获取文档内容
+- `get_available_platforms`: 获取可用平台列表
+- `get_document_stats`: 获取文档统计信息
+
+## 🛠️ 本地开发
 
 ### 环境要求
 
 - Node.js 16+
 - npm 或 yarn
 
-### 安装步骤
+### 安装依赖
 
 ```bash
-# 1. 克隆项目
-git clone https://github.com/easemob/easemob-doc-search.git
-cd easemob-doc-search
-
-# 2. 安装依赖
 npm install
-
-# 3. 构建项目
-npm run build
-
-# 4. 启动服务
-npm start
 ```
 
-### 开发模式
+### 构建项目
 
 ```bash
-# 开发模式启动（自动重载）
+npm run build
+```
+
+### 启动开发服务器
+
+```bash
+# 启动API服务器
 npm run start:dev
 
 # 启动MCP服务器
 npm run mcp:dev
+
+# 启动客户端
+npm run mcp-client:dev
 ```
 
-### 运行模式
-
-本服务支持三种运行模式：
-
-1. **API 模式**（默认）：提供 REST API 和 SSE 接口
-2. **MCP 模式**：提供 MCP 接口，用于 Cursor 等工具
-3. **双模式**：同时运行 API 和 MCP
-
-### 启动服务器
+### 测试
 
 ```bash
-# API 模式
-npm start
+# 运行所有测试
+npm test
 
-# MCP 模式
-npm run mcp
+# 测试基本功能
+npm run test:basic
 
-# 或者使用命令行工具
-npx easemob-doc-search serve --mode api
+# 测试SSE功能
+npm run test:sse
 ```
 
-服务器将在 `http://localhost:8000` 上运行。
-
-## 📡 API 端点
+## 📡 API接口
 
 ### REST API
 
 - `GET /health` - 健康检查
-- `GET /api/search-docs?platform={platform}` - 搜索指定平台的文档
-- `GET /api/get-doc-content?path={path}&keyword={keyword}` - 获取文档内容和关键字搜索结果
+- `GET /api/search-docs?platform=<platform>` - 搜索文档
+- `GET /api/get-doc-content?path=<path>&keyword=<keyword>` - 获取文档内容
 
-### SSE 端点
+### SSE接口
 
-- `GET /api/sse/search-docs?platform={platform}` - 流式搜索文档
-- `GET /api/sse/get-doc-content?path={path}&keyword={keyword}` - 流式获取文档内容
+- `GET /api/sse/search-docs?platform=<platform>` - 流式搜索文档
+- `GET /api/sse/get-doc-content?path=<path>&keyword=<keyword>` - 流式获取文档内容
 
-## 🔧 在 Cursor 中配置 MCP
+## 🐳 Docker部署
 
-1. 确保 MCP 服务器正在运行：
-   ```bash
-   npm run mcp
-   ```
-
-2. 在 Cursor 中配置 MCP：
-
-```json
-{
-  "docs-search": {
-    "command": "node",
-    "args": ["/path/to/easemob-doc-search/dist/mcp-server.js"],
-    "env": {},
-    "description": "环信文档搜索服务 - 按平台搜索文档并获取内容"
-  }
-}
-```
-
-3. 使用示例：
-   ```javascript
-   // 搜索Android平台文档
-   const docs = await mcp.call("search_platform_docs", {"platform": "android"});
-   
-   // 获取文档内容
-   const content = await mcp.call("get_document_content", {"doc_path": "android/overview.md"});
-   
-   // 在文档中搜索关键字
-   const results = await mcp.call("get_document_content", {
-       "doc_path": "android/overview.md", 
-       "keyword": "初始化"
-   });
-   ```
-
-## 📚 示例
-
-查看 `examples/` 目录中的完整示例：
-
-- `basic-usage.js` - 基本使用示例
-- `sse-streaming.js` - SSE 流式使用示例
-
-## 🏗️ 项目结构
-
-```
-easemob-doc-search/
-├── src/                    # TypeScript 源码
-│   ├── index.ts           # 主入口文件
-│   ├── client.ts          # 客户端类
-│   ├── server.ts          # Express 服务器
-│   ├── mcp-server.ts      # MCP 服务器
-│   ├── services/          # 服务层
-│   │   └── doc-search.service.ts
-│   ├── types.ts           # 类型定义
-│   └── cli.ts             # 命令行工具
-├── dist/                  # 编译后的 JavaScript
-├── examples/              # 使用示例
-├── document/              # 文档目录
-├── scripts/               # 脚本文件
-├── package.json           # npm 包配置
-├── tsconfig.json          # TypeScript 配置
-├── Dockerfile             # Docker 配置
-└── docker-compose.yml     # Docker Compose 配置
-```
-
-## 🐳 Docker 部署
-
-### 使用 Docker Compose
+### 构建镜像
 
 ```bash
-# 启动服务
-docker-compose up -d
-
-# 查看日志
-docker-compose logs -f
-
-# 停止服务
-docker-compose down
-```
-
-### 使用 Docker 命令
-
-```bash
-# 构建镜像
 docker build -t easemob-doc-search .
-
-# 运行容器
-docker run -d \
-  --name easemob-doc-search \
-  -p 8000:8000 \
-  -v $(pwd)/document:/app/document:ro \
-  easemob-doc-search
 ```
 
-## 📦 发布到 npm
+### 运行容器
+
+```bash
+docker run -p 8000:8000 easemob-doc-search
+```
+
+### Docker Compose
+
+```bash
+docker-compose up -d
+```
+
+## 📦 发布npm包
+
+### 构建和发布
 
 ```bash
 # 构建项目
 npm run build
 
-# 发布到 npm
+# 发布到npm
 npm publish
+```
+
+### 版本管理
+
+```bash
+# 更新版本号
+npm version patch  # 补丁版本
+npm version minor  # 次要版本
+npm version major  # 主要版本
+```
+
+## 📁 项目结构
+
+```
+easemob-doc-mcp2/
+├── src/
+│   ├── server.ts              # Express服务器
+│   ├── mcp-server.ts          # MCP服务器
+│   ├── mcp-client.ts          # MCP客户端
+│   ├── client.ts              # HTTP客户端
+│   ├── cli.ts                 # 命令行工具
+│   ├── index.ts               # 包入口
+│   ├── types.ts               # 类型定义
+│   └── services/
+│       └── doc-search.service.ts  # 文档搜索服务
+├── document/                  # 文档目录
+├── dist/                      # 编译输出
+├── scripts/                   # 脚本文件
+├── test/                      # 测试文件
+├── examples/                  # 使用示例
+├── package.json
+├── tsconfig.json
+├── Dockerfile
+├── docker-compose.yml
+└── README.md
+```
+
+## 🔧 配置选项
+
+### 环境变量
+
+- `PORT`: 服务器端口 (默认: 8000)
+- `NODE_ENV`: 运行环境 (development/production)
+- `EASEMOB_API_URL`: API服务器地址 (用于MCP客户端)
+
+### 客户端选项
+
+```typescript
+interface ClientOptions {
+  baseUrl?: string;        // API基础URL
+  timeout?: number;        // 请求超时时间
+  headers?: Record<string, string>;  // 自定义请求头
+}
 ```
 
 ## 🤝 贡献
 
-欢迎提交 Issue 和 Pull Request！
+欢迎提交Issue和Pull Request！
 
-## �� 许可证
+## 📄 许可证
 
-MIT License 
+MIT License
+
+## 🔗 相关链接
+
+- [环信官网](https://www.easemob.com/)
+- [环信文档](https://docs.easemob.com/)
+- [Model Context Protocol](https://modelcontextprotocol.io/)
+- [Cursor编辑器](https://cursor.sh/) 
