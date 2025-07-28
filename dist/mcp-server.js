@@ -4,6 +4,15 @@ Object.defineProperty(exports, "__esModule", { value: true });
 const index_js_1 = require("@modelcontextprotocol/sdk/server/index.js");
 const stdio_js_1 = require("@modelcontextprotocol/sdk/server/stdio.js");
 const doc_search_service_1 = require("./services/doc-search.service");
+const zod_1 = require("zod");
+// 定义工具调用的请求 schema
+const ToolCallRequestSchema = zod_1.z.object({
+    method: zod_1.z.literal('tools/call'),
+    params: zod_1.z.object({
+        name: zod_1.z.string(),
+        arguments: zod_1.z.record(zod_1.z.string(), zod_1.z.any())
+    })
+});
 // 创建MCP服务器
 const server = new index_js_1.Server({
     name: 'easemob-doc-search',
@@ -12,7 +21,7 @@ const server = new index_js_1.Server({
 // 创建文档搜索服务实例
 const docSearchService = new doc_search_service_1.DocSearchService();
 // 注册工具：搜索平台文档
-server.setRequestHandler('tools/call', async (request) => {
+server.setRequestHandler(ToolCallRequestSchema, async (request) => {
     const { name, arguments: args } = request.params;
     switch (name) {
         case 'search_platform_docs': {

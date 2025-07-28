@@ -1,38 +1,30 @@
-# 源码文件
+# 源代码和配置文件
 src/
 tsconfig.json
+nodemon.json
 
-# 开发文件
+# 开发工具
 .vscode/
 .git/
 .gitignore
 .DS_Store
 
-# 测试文件
-**/*.test.js
-**/*.test.ts
-**/*.spec.js
-**/*.spec.ts
-test/
-tests/
-
-# 构建文件
-*.tsbuildinfo
-
-# 文档
-docs/
-*.md
-!README.md
-
-# 示例
+# 文档和示例
 examples/
+test/
+MIGRATION.md
+DEPLOYMENT.md
+CURSOR_INTEGRATION.md
 
-# Docker
+# 构建和部署
 Dockerfile
 docker-compose.yml
 .dockerignore
 
-# 其他
-.env
-.env.local
-.env.*.local 
+# 环境文件
+.env*
+*.log
+
+# 临时文件
+*.tsbuildinfo
+.tmp/ 

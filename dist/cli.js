@@ -57,8 +57,8 @@ program
         const client = new client_1.default({ baseUrl: options.url });
         const result = await client.searchDocs(platform);
         console.log(`找到 ${result.results.length} 个文档:`);
-        result.results.forEach((doc) => {
-            console.log(`- ${doc.path} (${doc.platform})`);
+        result.results.forEach((docPath) => {
+            console.log(`- ${docPath}`);
         });
     }
     catch (error) {
