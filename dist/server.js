@@ -1,4 +1,17 @@
 "use strict";
+/**
+ * 环信文档搜索服务器
+ *
+ * 这是一个基于 Express.js 的 REST API 服务器，提供文档搜索功能。
+ * 支持多种平台（Android、iOS、Web等）的文档搜索和内容获取。
+ *
+ * 主要功能：
+ * - 文档搜索 API
+ * - 文档内容获取 API
+ * - SSE 流式响应
+ * - 健康检查
+ * - 文档统计
+ */
 var __importDefault = (this && this.__importDefault) || function (mod) {
     return (mod && mod.__esModule) ? mod : { "default": mod };
 };
@@ -8,16 +21,35 @@ const cors_1 = __importDefault(require("cors"));
 const helmet_1 = __importDefault(require("helmet"));
 const compression_1 = __importDefault(require("compression"));
 const doc_search_service_1 = require("./services/doc-search.service");
+// 创建 Express 应用实例
 const app = (0, express_1.default)();
-const port = process.env.PORT || 8000;
-// 中间件
-app.use((0, helmet_1.default)());
+const PORT = process.env.PORT || 8000;
+// 安全中间件配置
+app.use((0, helmet_1.default)({
+    contentSecurityPolicy: {
+        directives: {
+            defaultSrc: ["'self'"],
+            styleSrc: ["'self'", "'unsafe-inline'"],
+            scriptSrc: ["'self'"],
+            imgSrc: ["'self'", "data:", "https:"],
+        },
+    },
+}));
+// 启用 CORS（跨域资源共享）
+app.use((0, cors_1.default)({
+    origin: true,
+    credentials: true
+}));
+// 启用压缩（减少传输大小）
 app.use((0, compression_1.default)());
-app.use((0, cors_1.default)());
+// 解析 JSON 请求体
 app.use(express_1.default.json());
 // 创建文档搜索服务实例
 const docSearchService = new doc_search_service_1.DocSearchService();
-// 健康检查端点
+/**
+ * 健康检查端点
+ * 用于监控服务状态和负载均衡器健康检查
+ */
 app.get('/health', (req, res) => {
     res.json({
         status: 'healthy',
@@ -26,7 +58,10 @@ app.get('/health', (req, res) => {
         timestamp: new Date().toISOString()
     });
 });
-// REST API 端点
+/**
+ * 搜索平台文档 API
+ * GET /api/search-docs?platform={platform}
+ */
 app.get('/api/search-docs', async (req, res) => {
     try {
         const { platform } = req.query;
@@ -41,6 +76,10 @@ app.get('/api/search-docs', async (req, res) => {
         res.status(500).json({ error: '搜索文档失败' });
     }
 });
+/**
+ * 获取文档内容 API
+ * GET /api/get-doc-content?path={path}&keyword={keyword}
+ */
 app.get('/api/get-doc-content', async (req, res) => {
     try {
         const { path, keyword } = req.query;
@@ -56,13 +95,16 @@ app.get('/api/get-doc-content', async (req, res) => {
         res.status(500).json({ error: '获取文档内容失败' });
     }
 });
-// SSE 端点
+/**
+ * SSE 流式搜索文档 API
+ * GET /api/sse/search-docs?platform={platform}
+ */
 app.get('/api/sse/search-docs', async (req, res) => {
     const { platform } = req.query;
     if (!platform || typeof platform !== 'string') {
         return res.status(400).json({ error: 'platform参数是必需的' });
     }
-    // 设置SSE头部
+    // 设置 SSE 头部
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -103,13 +145,17 @@ app.get('/api/sse/search-docs', async (req, res) => {
         res.end();
     }
 });
+/**
+ * SSE 流式获取文档内容 API
+ * GET /api/sse/get-doc-content?path={path}&keyword={keyword}
+ */
 app.get('/api/sse/get-doc-content', async (req, res) => {
     const { path, keyword } = req.query;
     if (!path || typeof path !== 'string') {
         return res.status(400).json({ error: 'path参数是必需的' });
     }
     const keywordStr = typeof keyword === 'string' ? keyword : '';
-    // 设置SSE头部
+    // 设置 SSE 头部
     res.writeHead(200, {
         'Content-Type': 'text/event-stream',
         'Cache-Control': 'no-cache',
@@ -176,11 +222,11 @@ app.use('*', (req, res) => {
     res.status(404).json({ error: '接口不存在' });
 });
 // 启动服务器
-app.listen(port, () => {
+app.listen(PORT, () => {
     console.log(`🚀 环信文档搜索服务器启动成功！`);
-    console.log(`📍 地址: http://localhost:${port}`);
-    console.log(`📡 API文档: http://localhost:${port}/api`);
-    console.log(`🔍 健康检查: http://localhost:${port}/health`);
+    console.log(`📍 地址: http://localhost:${PORT}`);
+    console.log(`📡 API文档: http://localhost:${PORT}/api`);
+    console.log(`🔍 健康检查: http://localhost:${PORT}/health`);
     console.log(`\n📋 可用端点:`);
     console.log(`  - GET /health - 健康检查`);
     console.log(`  - GET /api/search-docs?platform={platform} - 搜索文档`);

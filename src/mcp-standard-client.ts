@@ -1,8 +1,21 @@
 #!/usr/bin/env node
 
+/**
+ * 环信文档搜索 MCP 标准客户端
+ * 
+ * 这是一个自定义的 MCP (Model Context Protocol) 客户端实现，
+ * 用于连接环信文档搜索服务。它实现了完整的 MCP 协议，
+ * 包括 initialize、tools/list 和 tools/call 方法。
+ * 
+ * 主要功能：
+ * - 连接到远程 HTTP API 服务器
+ * - 提供文档搜索工具
+ * - 支持流式响应
+ */
+
 import EasemobDocSearchClient from './client';
 
-// 从环境变量获取远程服务器URL
+// 从环境变量获取远程服务器URL，默认为本地服务器
 const remoteUrl = process.env.EASEMOB_API_URL || 'http://localhost:8000';
 const docSearchClient = new EasemobDocSearchClient({
   baseUrl: remoteUrl
@@ -10,7 +23,10 @@ const docSearchClient = new EasemobDocSearchClient({
 
 console.error(`🔗 连接到远程服务器: ${remoteUrl}`);
 
-// 定义可用的工具
+/**
+ * 定义可用的 MCP 工具
+ * 每个工具包含名称、描述和输入参数模式
+ */
 const tools = [
   {
     name: 'search_platform_docs',
@@ -62,7 +78,10 @@ const tools = [
   }
 ];
 
-// 标准 MCP 协议实现
+/**
+ * 标准 MCP 协议实现
+ * 处理来自 Cursor 或其他 MCP 客户端的请求
+ */
 async function handleMCPRequest() {
   const stdin = process.stdin;
   const stdout = process.stdout;
@@ -78,8 +97,8 @@ async function handleMCPRequest() {
         
         const request = JSON.parse(line);
         
+        // 处理初始化请求
         if (request.method === 'initialize') {
-          // 响应初始化请求
           const response = {
             jsonrpc: '2.0',
             id: request.id,
@@ -95,8 +114,9 @@ async function handleMCPRequest() {
             }
           };
           stdout.write(JSON.stringify(response) + '\n');
-        } else if (request.method === 'tools/list') {
-          // 响应工具列表请求
+        } 
+        // 处理工具列表请求
+        else if (request.method === 'tools/list') {
           const response = {
             jsonrpc: '2.0',
             id: request.id,
@@ -105,8 +125,9 @@ async function handleMCPRequest() {
             }
           };
           stdout.write(JSON.stringify(response) + '\n');
-        } else if (request.method === 'tools/call') {
-          // 处理工具调用
+        } 
+        // 处理工具调用请求
+        else if (request.method === 'tools/call') {
           const { name, arguments: args } = request.params;
           
           console.error(`🔧 调用工具: ${name}, 参数:`, args);
@@ -114,6 +135,7 @@ async function handleMCPRequest() {
           try {
             let result;
             
+            // 根据工具名称执行相应的操作
             switch (name) {
               case 'search_platform_docs': {
                 const { platform } = args;
@@ -181,6 +203,7 @@ async function handleMCPRequest() {
                 throw new Error(`未知的工具: ${name}`);
             }
             
+            // 返回成功响应
             const response = {
               jsonrpc: '2.0',
               id: request.id,

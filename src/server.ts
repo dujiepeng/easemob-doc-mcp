@@ -1,22 +1,58 @@
+/**
+ * 环信文档搜索服务器
+ * 
+ * 这是一个基于 Express.js 的 REST API 服务器，提供文档搜索功能。
+ * 支持多种平台（Android、iOS、Web等）的文档搜索和内容获取。
+ * 
+ * 主要功能：
+ * - 文档搜索 API
+ * - 文档内容获取 API
+ * - SSE 流式响应
+ * - 健康检查
+ * - 文档统计
+ */
+
 import express from 'express';
 import cors from 'cors';
 import helmet from 'helmet';
 import compression from 'compression';
 import { DocSearchService } from './services/doc-search.service';
 
+// 创建 Express 应用实例
 const app = express();
-const port = process.env.PORT || 8000;
+const PORT = process.env.PORT || 8000;
 
-// 中间件
-app.use(helmet());
+// 安全中间件配置
+app.use(helmet({
+  contentSecurityPolicy: {
+    directives: {
+      defaultSrc: ["'self'"],
+      styleSrc: ["'self'", "'unsafe-inline'"],
+      scriptSrc: ["'self'"],
+      imgSrc: ["'self'", "data:", "https:"],
+    },
+  },
+}));
+
+// 启用 CORS（跨域资源共享）
+app.use(cors({
+  origin: true,
+  credentials: true
+}));
+
+// 启用压缩（减少传输大小）
 app.use(compression());
-app.use(cors());
+
+// 解析 JSON 请求体
 app.use(express.json());
 
 // 创建文档搜索服务实例
 const docSearchService = new DocSearchService();
 
-// 健康检查端点
+/**
+ * 健康检查端点
+ * 用于监控服务状态和负载均衡器健康检查
+ */
 app.get('/health', (req, res) => {
   res.json({
     status: 'healthy',
@@ -26,7 +62,10 @@ app.get('/health', (req, res) => {
   });
 });
 
-// REST API 端点
+/**
+ * 搜索平台文档 API
+ * GET /api/search-docs?platform={platform}
+ */
 app.get('/api/search-docs', async (req, res) => {
   try {
     const { platform } = req.query;
@@ -34,7 +73,7 @@ app.get('/api/search-docs', async (req, res) => {
     if (!platform || typeof platform !== 'string') {
       return res.status(400).json({ error: 'platform参数是必需的' });
     }
-
+    
     const results = await docSearchService.searchPlatformDocs(platform);
     res.json({ results });
   } catch (error) {
@@ -43,6 +82,10 @@ app.get('/api/search-docs', async (req, res) => {
   }
 });
 
+/**
+ * 获取文档内容 API
+ * GET /api/get-doc-content?path={path}&keyword={keyword}
+ */
 app.get('/api/get-doc-content', async (req, res) => {
   try {
     const { path, keyword } = req.query;
@@ -50,7 +93,7 @@ app.get('/api/get-doc-content', async (req, res) => {
     if (!path || typeof path !== 'string') {
       return res.status(400).json({ error: 'path参数是必需的' });
     }
-
+    
     const keywordStr = typeof keyword === 'string' ? keyword : '';
     const result = await docSearchService.getDocumentContent(path, keywordStr);
     res.json(result);
@@ -60,7 +103,10 @@ app.get('/api/get-doc-content', async (req, res) => {
   }
 });
 
-// SSE 端点
+/**
+ * SSE 流式搜索文档 API
+ * GET /api/sse/search-docs?platform={platform}
+ */
 app.get('/api/sse/search-docs', async (req, res) => {
   const { platform } = req.query;
   
@@ -68,7 +114,7 @@ app.get('/api/sse/search-docs', async (req, res) => {
     return res.status(400).json({ error: 'platform参数是必需的' });
   }
 
-  // 设置SSE头部
+  // 设置 SSE 头部
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -115,6 +161,10 @@ app.get('/api/sse/search-docs', async (req, res) => {
   }
 });
 
+/**
+ * SSE 流式获取文档内容 API
+ * GET /api/sse/get-doc-content?path={path}&keyword={keyword}
+ */
 app.get('/api/sse/get-doc-content', async (req, res) => {
   const { path, keyword } = req.query;
   
@@ -124,7 +174,7 @@ app.get('/api/sse/get-doc-content', async (req, res) => {
 
   const keywordStr = typeof keyword === 'string' ? keyword : '';
 
-  // 设置SSE头部
+  // 设置 SSE 头部
   res.writeHead(200, {
     'Content-Type': 'text/event-stream',
     'Cache-Control': 'no-cache',
@@ -201,11 +251,11 @@ app.use('*', (req, res) => {
 });
 
 // 启动服务器
-app.listen(port, () => {
+app.listen(PORT, () => {
   console.log(`🚀 环信文档搜索服务器启动成功！`);
-  console.log(`📍 地址: http://localhost:${port}`);
-  console.log(`📡 API文档: http://localhost:${port}/api`);
-  console.log(`🔍 健康检查: http://localhost:${port}/health`);
+  console.log(`📍 地址: http://localhost:${PORT}`);
+  console.log(`📡 API文档: http://localhost:${PORT}/api`);
+  console.log(`🔍 健康检查: http://localhost:${PORT}/health`);
   console.log(`\n📋 可用端点:`);
   console.log(`  - GET /health - 健康检查`);
   console.log(`  - GET /api/search-docs?platform={platform} - 搜索文档`);
