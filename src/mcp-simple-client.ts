@@ -10,6 +10,58 @@ const docSearchClient = new EasemobDocSearchClient({
 
 console.error(`🔗 连接到远程服务器: ${remoteUrl}`);
 
+// 定义可用的工具
+const tools = [
+  {
+    name: 'search_platform_docs',
+    description: '搜索指定平台的文档列表',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        platform: {
+          type: 'string',
+          description: '平台名称 (android, ios, web, flutter等)'
+        }
+      },
+      required: ['platform']
+    }
+  },
+  {
+    name: 'get_document_content',
+    description: '获取指定文档的内容',
+    inputSchema: {
+      type: 'object',
+      properties: {
+        doc_path: {
+          type: 'string',
+          description: '文档路径'
+        },
+        keyword: {
+          type: 'string',
+          description: '搜索关键词（可选）'
+        }
+      },
+      required: ['doc_path']
+    }
+  },
+  {
+    name: 'get_document_stats',
+    description: '获取文档统计信息',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  },
+  {
+    name: 'get_available_platforms',
+    description: '获取可用的平台列表',
+    inputSchema: {
+      type: 'object',
+      properties: {}
+    }
+  }
+];
+
 // 简单的 MCP 协议实现
 async function handleMCPRequest() {
   const stdin = process.stdin;
@@ -40,6 +92,16 @@ async function handleMCPRequest() {
                 name: 'easemob-doc-search-client',
                 version: '1.0.0'
               }
+            }
+          };
+          stdout.write(JSON.stringify(response) + '\n');
+        } else if (request.method === 'tools/list') {
+          // 响应工具列表请求
+          const response = {
+            jsonrpc: '2.0',
+            id: request.id,
+            result: {
+              tools: tools
             }
           };
           stdout.write(JSON.stringify(response) + '\n');
