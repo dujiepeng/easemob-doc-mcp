@@ -3,6 +3,8 @@
 import { Command } from 'commander';
 import EasemobDocSearchClient from './client';
 import { SSEEvent } from './types';
+import { spawn } from 'child_process';
+import * as path from 'path';
 
 const program = new Command();
 
@@ -30,6 +32,7 @@ program
       const health = await client.healthCheck();
       console.log('✅ 服务状态:', health.status);
       console.log('🔧 服务名称:', health.service);
+      console.log('📅 时间戳:', health.timestamp);
     } catch (error) {
       console.error('❌ 健康检查失败:', error instanceof Error ? error.message : error);
       process.exit(1);
@@ -185,31 +188,73 @@ program
     console.log('🚀 启动环信文档搜索服务器...');
     console.log(`📍 端口: ${options.port}`);
     console.log(`🔧 模式: ${options.mode}`);
-    console.log('\n💡 提示: 请确保Python环境和依赖已安装');
-    console.log('📦 依赖: pip install -r requirements.txt');
+    console.log('\n💡 提示: 这是一个纯Node.js实现的服务');
     console.log('\n🔄 正在启动服务器...\n');
     
-    // 这里可以启动Python服务器进程
-    const { spawn } = require('child_process');
-    const pythonProcess = spawn('python', [
-      'fastmcp_server/main.py',
-      '--mode', options.mode
-    ], {
-      stdio: 'inherit'
-    });
+    const serverScript = path.join(__dirname, 'server.js');
     
-    pythonProcess.on('error', (error: Error) => {
-      console.error('❌ 启动服务器失败:', error.message);
-      console.log('💡 请确保Python环境和依赖已正确安装');
+    if (options.mode === 'api' || options.mode === 'both') {
+      // 启动API服务器
+      const apiProcess = spawn('node', [serverScript], {
+        stdio: 'inherit',
+        env: { ...process.env, PORT: options.port }
+      });
+      
+      apiProcess.on('error', (error: Error) => {
+        console.error('❌ 启动API服务器失败:', error.message);
+        process.exit(1);
+      });
+      
+      apiProcess.on('exit', (code: number) => {
+        if (code !== 0) {
+          console.error(`❌ API服务器异常退出，退出码: ${code}`);
+          process.exit(code);
+        }
+      });
+    }
+    
+    if (options.mode === 'mcp' || options.mode === 'both') {
+      // 启动MCP服务器
+      const mcpScript = path.join(__dirname, 'mcp-server.js');
+      const mcpProcess = spawn('node', [mcpScript], {
+        stdio: 'inherit'
+      });
+      
+      mcpProcess.on('error', (error: Error) => {
+        console.error('❌ 启动MCP服务器失败:', error.message);
+        process.exit(1);
+      });
+      
+      mcpProcess.on('exit', (code: number) => {
+        if (code !== 0) {
+          console.error(`❌ MCP服务器异常退出，退出码: ${code}`);
+          process.exit(code);
+        }
+      });
+    }
+  });
+
+// 统计信息命令
+program
+  .command('stats')
+  .description('获取文档统计信息')
+  .action(async (options: any) => {
+    try {
+      const client = new EasemobDocSearchClient({
+        baseUrl: options.parent.url,
+        timeout: parseInt(options.parent.timeout)
+      });
+      
+      console.log('📊 获取文档统计信息...\n');
+      
+      // 这里需要添加获取统计信息的API端点
+      // 暂时显示基本信息
+      console.log('💡 统计功能正在开发中...');
+      
+    } catch (error) {
+      console.error('❌ 获取统计信息失败:', error instanceof Error ? error.message : error);
       process.exit(1);
-    });
-    
-    pythonProcess.on('exit', (code: number) => {
-      if (code !== 0) {
-        console.error(`❌ 服务器异常退出，退出码: ${code}`);
-        process.exit(code);
-      }
-    });
+    }
   });
 
 // 解析命令行参数

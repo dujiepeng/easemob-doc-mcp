@@ -6,7 +6,8 @@ services:
     ports:
       - "8000:8000"
     environment:
-      - PYTHONUNBUFFERED=1
+      - NODE_ENV=production
+      - PORT=8000
     volumes:
       - ./document:/app/document:ro
     restart: unless-stopped

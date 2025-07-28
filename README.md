@@ -1,6 +1,6 @@
 # 环信文档搜索服务
 
-这是一个基于 Python FastMCP 和 FastAPI 构建的文档搜索服务，支持多平台文档搜索和 SSE 流式响应。现在可以作为 npm 包使用！
+这是一个基于 **Node.js** 构建的文档搜索服务，支持多平台文档搜索和 SSE 流式响应。现在可以作为 npm 包使用！
 
 ## ✨ 功能特点
 
@@ -8,9 +8,10 @@
 - 📄 获取文档全文内容
 - 🔎 在文档中搜索关键字并返回上下文
 - 🌊 支持 SSE（Server-Sent Events）流式响应
-- 🚀 同时支持 FastAPI 和 FastMCP 接口
+- 🚀 纯 Node.js 实现，无需 Python 环境
 - 📦 可作为 npm 包使用
 - 🖥️ 提供命令行工具
+- 🔧 支持 MCP（Model Context Protocol）
 
 ## 📦 作为 npm 包使用
 
@@ -107,44 +108,64 @@ easemob-doc-search content android/overview.md --keyword 初始化 --stream
 
 # 启动服务器
 easemob-doc-search serve --port 8000 --mode api
+
+# 获取统计信息
+easemob-doc-search stats
 ```
 
 ## 🚀 本地开发
 
-### 安装依赖
+### 环境要求
 
-1. 安装 Node.js 依赖：
+- Node.js 16+
+- npm 或 yarn
+
+### 安装步骤
+
 ```bash
+# 1. 克隆项目
+git clone https://github.com/easemob/easemob-doc-search.git
+cd easemob-doc-search
+
+# 2. 安装依赖
 npm install
-```
 
-2. 安装 Python 依赖：
-```bash
-pip install -r requirements.txt
-```
-
-3. 构建 TypeScript：
-```bash
+# 3. 构建项目
 npm run build
+
+# 4. 启动服务
+npm start
+```
+
+### 开发模式
+
+```bash
+# 开发模式启动（自动重载）
+npm run start:dev
+
+# 启动MCP服务器
+npm run mcp:dev
 ```
 
 ### 运行模式
 
 本服务支持三种运行模式：
 
-1. **FastAPI 模式**（默认）：提供 REST API 和 SSE 接口
-2. **FastMCP 模式**：提供 FastMCP 接口，用于 Cursor 等工具
-3. **双模式**：同时运行 FastAPI 和 FastMCP
+1. **API 模式**（默认）：提供 REST API 和 SSE 接口
+2. **MCP 模式**：提供 MCP 接口，用于 Cursor 等工具
+3. **双模式**：同时运行 API 和 MCP
 
 ### 启动服务器
 
 ```bash
-# FastAPI 模式
-cd fastmcp_server
-python main.py --mode api
+# API 模式
+npm start
 
-# 或者使用 npm 命令
-npm run start serve --mode api
+# MCP 模式
+npm run mcp
+
+# 或者使用命令行工具
+npx easemob-doc-search serve --mode api
 ```
 
 服务器将在 `http://localhost:8000` 上运行。
@@ -153,21 +174,20 @@ npm run start serve --mode api
 
 ### REST API
 
+- `GET /health` - 健康检查
 - `GET /api/search-docs?platform={platform}` - 搜索指定平台的文档
 - `GET /api/get-doc-content?path={path}&keyword={keyword}` - 获取文档内容和关键字搜索结果
-- `GET /health` - 健康检查
 
 ### SSE 端点
 
 - `GET /api/sse/search-docs?platform={platform}` - 流式搜索文档
 - `GET /api/sse/get-doc-content?path={path}&keyword={keyword}` - 流式获取文档内容
 
-## 🔧 在 Cursor 中配置 FastMCP
+## 🔧 在 Cursor 中配置 MCP
 
-1. 确保 FastMCP 服务器正在运行：
+1. 确保 MCP 服务器正在运行：
    ```bash
-   cd fastmcp_server
-   python run_mcp.py
+   npm run mcp
    ```
 
 2. 在 Cursor 中配置 MCP：
@@ -175,8 +195,8 @@ npm run start serve --mode api
 ```json
 {
   "docs-search": {
-    "command": "python",
-    "args": ["/path/to/easemob-doc-search/fastmcp_server/run_mcp.py"],
+    "command": "node",
+    "args": ["/path/to/easemob-doc-search/dist/mcp-server.js"],
     "env": {},
     "description": "环信文档搜索服务 - 按平台搜索文档并获取内容"
   }
@@ -184,18 +204,18 @@ npm run start serve --mode api
 ```
 
 3. 使用示例：
-   ```python
-   # 搜索Android平台文档
-   docs = await mcp.call("search_platform_docs", {"platform": "android"})
+   ```javascript
+   // 搜索Android平台文档
+   const docs = await mcp.call("search_platform_docs", {"platform": "android"});
    
-   # 获取文档内容
-   content = await mcp.call("get_document_content", {"doc_path": "android/overview.md"})
+   // 获取文档内容
+   const content = await mcp.call("get_document_content", {"doc_path": "android/overview.md"});
    
-   # 在文档中搜索关键字
-   results = await mcp.call("get_document_content", {
+   // 在文档中搜索关键字
+   const results = await mcp.call("get_document_content", {
        "doc_path": "android/overview.md", 
        "keyword": "初始化"
-   })
+   });
    ```
 
 ## 📚 示例
@@ -205,13 +225,6 @@ npm run start serve --mode api
 - `basic-usage.js` - 基本使用示例
 - `sse-streaming.js` - SSE 流式使用示例
 
-## 📄 FastAPI 文档
-
-启动服务后，可以访问以下网址查看交互式 API 文档：
-
-- Swagger UI: http://localhost:8000/docs
-- ReDoc: http://localhost:8000/redoc
-
 ## 🏗️ 项目结构
 
 ```
@@ -219,17 +232,49 @@ easemob-doc-search/
 ├── src/                    # TypeScript 源码
 │   ├── index.ts           # 主入口文件
 │   ├── client.ts          # 客户端类
+│   ├── server.ts          # Express 服务器
+│   ├── mcp-server.ts      # MCP 服务器
+│   ├── services/          # 服务层
+│   │   └── doc-search.service.ts
 │   ├── types.ts           # 类型定义
 │   └── cli.ts             # 命令行工具
 ├── dist/                  # 编译后的 JavaScript
-├── fastmcp_server/        # Python 服务器
-│   ├── main.py           # 主服务器文件
-│   └── run_mcp.py        # MCP 服务器
 ├── examples/              # 使用示例
 ├── document/              # 文档目录
+├── scripts/               # 脚本文件
 ├── package.json           # npm 包配置
 ├── tsconfig.json          # TypeScript 配置
-└── requirements.txt       # Python 依赖
+├── Dockerfile             # Docker 配置
+└── docker-compose.yml     # Docker Compose 配置
+```
+
+## 🐳 Docker 部署
+
+### 使用 Docker Compose
+
+```bash
+# 启动服务
+docker-compose up -d
+
+# 查看日志
+docker-compose logs -f
+
+# 停止服务
+docker-compose down
+```
+
+### 使用 Docker 命令
+
+```bash
+# 构建镜像
+docker build -t easemob-doc-search .
+
+# 运行容器
+docker run -d \
+  --name easemob-doc-search \
+  -p 8000:8000 \
+  -v $(pwd)/document:/app/document:ro \
+  easemob-doc-search
 ```
 
 ## 📦 发布到 npm
