@@ -18,6 +18,8 @@
     "mcp:dev": "ts-node src/mcp-server.ts",
     "mcp-client": "node dist/mcp-client.js",
     "mcp-client:dev": "ts-node src/mcp-client.ts",
+    "mcp-remote": "EASEMOB_API_URL=${EASEMOB_REMOTE_URL:-http://localhost:8000} node dist/mcp-client.js",
+    "mcp-remote:dev": "EASEMOB_API_URL=${EASEMOB_REMOTE_URL:-http://localhost:8000} ts-node src/mcp-client.ts",
     "setup-cursor": "node scripts/setup-cursor.js",
     "postinstall": "node scripts/postinstall.js"
   },

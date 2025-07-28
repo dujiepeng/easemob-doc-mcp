@@ -17,71 +17,167 @@ function setupCursorConfig() {
     output: process.stdout
   });
 
-  rl.question('请输入你的服务器URL (例如: http://localhost:8000 或 https://your-server.com): ', (serverUrl) => {
-    rl.question('请输入项目路径 (例如: /path/to/easemob-doc-search): ', (projectPath) => {
-      rl.close();
-      
-      // 生成配置
-      const config = generateCursorConfig(serverUrl, projectPath);
-      
-      // 显示配置
-      console.log('\n📋 生成的Cursor配置:');
-      console.log('='.repeat(50));
-      console.log(JSON.stringify(config, null, 2));
-      console.log('='.repeat(50));
-      
-      // 保存配置文件
-      const configPath = path.join(process.cwd(), 'cursor-mcp-config.json');
-      fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
-      
-      console.log(`\n✅ 配置已保存到: ${configPath}`);
-      console.log('\n📝 使用说明:');
-      console.log('1. 打开Cursor设置');
-      console.log('2. 找到MCP配置部分');
-      console.log('3. 将上述配置复制到MCP设置中');
-      console.log('4. 重启Cursor');
-      
-      // 生成环境变量文件
-      generateEnvFile(serverUrl);
-    });
+  console.log('请选择部署方式:');
+  console.log('1. 本地部署 (localhost)');
+  console.log('2. 远程服务器部署 (Docker/云服务器)');
+  console.log('3. 内网部署');
+  console.log('4. 生产环境部署 (HTTPS)');
+
+  rl.question('请选择 (1-4): ', (choice) => {
+    switch (choice) {
+      case '1':
+        setupLocalConfig(rl);
+        break;
+      case '2':
+        setupRemoteConfig(rl);
+        break;
+      case '3':
+        setupInternalConfig(rl);
+        break;
+      case '4':
+        setupProductionConfig(rl);
+        break;
+      default:
+        console.log('无效选择，使用本地配置');
+        setupLocalConfig(rl);
+    }
   });
 }
 
 /**
- * 生成Cursor MCP配置
+ * 本地部署配置
  */
-function generateCursorConfig(serverUrl, projectPath) {
-  const isLocal = serverUrl.includes('localhost') || serverUrl.includes('127.0.0.1');
+function setupLocalConfig(rl) {
+  rl.question('请输入本地服务器端口 (默认: 8000): ', (port) => {
+    const serverUrl = `http://localhost:${port || 8000}`;
+    const projectPath = process.cwd();
+    
+    const config = generateLocalConfig(serverUrl, projectPath);
+    saveConfig(config, '本地部署');
+    rl.close();
+  });
+}
+
+/**
+ * 远程服务器配置
+ */
+function setupRemoteConfig(rl) {
+  rl.question('请输入远程服务器地址 (例如: http://your-server.com:8000): ', (serverUrl) => {
+    if (!serverUrl) {
+      console.log('❌ 服务器地址不能为空');
+      rl.close();
+      return;
+    }
+    
+    const config = generateRemoteConfig(serverUrl);
+    saveConfig(config, '远程服务器部署');
+    generateEnvFile(serverUrl);
+    rl.close();
+  });
+}
+
+/**
+ * 内网部署配置
+ */
+function setupInternalConfig(rl) {
+  rl.question('请输入内网服务器IP和端口 (例如: 192.168.1.100:8000): ', (serverInfo) => {
+    if (!serverInfo) {
+      console.log('❌ 服务器信息不能为空');
+      rl.close();
+      return;
+    }
+    
+    const serverUrl = `http://${serverInfo}`;
+    const config = generateRemoteConfig(serverUrl);
+    saveConfig(config, '内网部署');
+    generateEnvFile(serverUrl);
+    rl.close();
+  });
+}
+
+/**
+ * 生产环境配置
+ */
+function setupProductionConfig(rl) {
+  rl.question('请输入生产服务器域名 (例如: https://your-domain.com): ', (domain) => {
+    if (!domain) {
+      console.log('❌ 域名不能为空');
+      rl.close();
+      return;
+    }
+    
+    const serverUrl = domain.startsWith('http') ? domain : `https://${domain}`;
+    const config = generateRemoteConfig(serverUrl);
+    saveConfig(config, '生产环境部署');
+    generateEnvFile(serverUrl);
+    rl.close();
+  });
+}
+
+/**
+ * 生成本地配置
+ */
+function generateLocalConfig(serverUrl, projectPath) {
+  return {
+    "mcpServers": {
+      "easemob-docs": {
+        "command": "node",
+        "args": [path.join(projectPath, "dist", "mcp-server.js")],
+        "env": {
+          "NODE_ENV": "production"
+        },
+        "description": "环信文档搜索服务 - 本地部署"
+      }
+    }
+  };
+}
+
+/**
+ * 生成远程配置
+ */
+function generateRemoteConfig(serverUrl) {
+  return {
+    "mcpServers": {
+      "easemob-docs": {
+        "command": "npx",
+        "args": ["@easemob/docs-mcp@latest", "mcp-remote"],
+        "env": {
+          "EASEMOB_API_URL": serverUrl,
+          "NODE_ENV": "production"
+        },
+        "description": "环信文档搜索服务 - 远程部署"
+      }
+    }
+  };
+}
+
+/**
+ * 保存配置
+ */
+function saveConfig(config, type) {
+  // 显示配置
+  console.log(`\n📋 生成的${type}配置:`);
+  console.log('='.repeat(50));
+  console.log(JSON.stringify(config, null, 2));
+  console.log('='.repeat(50));
   
-  if (isLocal) {
-    // 本地部署 - 直接使用MCP服务器
-    return {
-      "mcpServers": {
-        "easemob-docs": {
-          "command": "node",
-          "args": [path.join(projectPath, "dist", "mcp-server.js")],
-          "env": {
-            "NODE_ENV": "production"
-          },
-          "description": "环信文档搜索服务 - 按平台搜索文档并获取内容"
-        }
-      }
-    };
-  } else {
-    // 远程部署 - 使用MCP客户端连接到远程API
-    return {
-      "mcpServers": {
-        "easemob-docs": {
-          "command": "node",
-          "args": [path.join(projectPath, "dist", "mcp-client.js")],
-          "env": {
-            "NODE_ENV": "production",
-            "EASEMOB_API_URL": serverUrl
-          },
-          "description": "环信文档搜索服务 - 连接到远程API服务"
-        }
-      }
-    };
+  // 保存配置文件
+  const configPath = path.join(process.cwd(), 'cursor-mcp-config.json');
+  fs.writeFileSync(configPath, JSON.stringify(config, null, 2));
+  
+  console.log(`\n✅ 配置已保存到: ${configPath}`);
+  console.log('\n📝 使用说明:');
+  console.log('1. 打开Cursor设置');
+  console.log('2. 找到MCP配置部分');
+  console.log('3. 将上述配置复制到MCP设置中');
+  console.log('4. 重启Cursor');
+  
+  // 显示Docker部署说明
+  if (type !== '本地部署') {
+    console.log('\n🐳 Docker部署说明:');
+    console.log('1. 在服务器上运行: docker-compose up -d');
+    console.log('2. 确保服务器地址可以访问');
+    console.log('3. 测试连接: curl ' + config.mcpServers['easemob-docs'].env.EASEMOB_API_URL + '/health');
   }
 }
 
@@ -105,59 +201,32 @@ NODE_ENV=production
  */
 function generateUsageExamples() {
   const examples = `
-## 🚀 在Cursor中使用示例
+## 📝 使用示例
 
-### 1. 搜索Android平台文档
-\`\`\`javascript
-// 搜索Android平台的所有文档
-const docs = await mcp.call("search_platform_docs", {"platform": "android"});
-console.log('找到的文档:', docs);
-\`\`\`
+在Cursor中，你可以这样使用：
 
-### 2. 获取文档内容
-\`\`\`javascript
-// 获取特定文档的内容
-const content = await mcp.call("get_document_content", {
-  "doc_path": "android/overview.md"
-});
-console.log('文档内容:', content);
-\`\`\`
+1. 搜索文档：
+   "请帮我搜索 Android 平台的文档"
 
-### 3. 在文档中搜索关键字
-\`\`\`javascript
-// 在文档中搜索"初始化"关键字
-const results = await mcp.call("get_document_content", {
-  "doc_path": "android/overview.md", 
-  "keyword": "初始化"
-});
-console.log('搜索结果:', results);
-\`\`\`
+2. 获取文档内容：
+   "请获取 android/quickstart.md 的内容"
 
-### 4. 流式搜索文档
-\`\`\`javascript
-// 流式搜索iOS平台文档
-const streamResults = await mcp.call("search_docs_stream", {"platform": "ios"});
-console.log('流式搜索结果:', streamResults);
-\`\`\`
+3. 获取可用平台：
+   "有哪些可用的平台？"
 
-### 5. 健康检查
-\`\`\`javascript
-// 检查服务状态
-const health = await mcp.call("health_check", {});
-console.log('服务状态:', health);
-\`\`\`
+4. 获取统计信息：
+   "显示文档统计信息"
 `;
 
-  const examplesPath = path.join(process.cwd(), 'CURSOR_USAGE_EXAMPLES.md');
+  const examplesPath = path.join(process.cwd(), 'cursor-usage-examples.md');
   fs.writeFileSync(examplesPath, examples);
   
-  console.log(`\n📚 使用示例已生成: ${examplesPath}`);
+  console.log(`\n📖 使用示例已生成: ${examplesPath}`);
 }
 
 // 运行设置
 if (require.main === module) {
   setupCursorConfig();
-  generateUsageExamples();
 }
 
-module.exports = { setupCursorConfig, generateCursorConfig }; 
+module.exports = { setupCursorConfig }; 
