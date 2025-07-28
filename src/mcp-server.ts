@@ -3,20 +3,28 @@
 import { Server } from '@modelcontextprotocol/sdk/server/index.js';
 import { StdioServerTransport } from '@modelcontextprotocol/sdk/server/stdio.js';
 import { DocSearchService } from './services/doc-search.service';
+import { z } from 'zod';
+
+// 定义工具调用的请求 schema
+const ToolCallRequestSchema = z.object({
+  method: z.literal('tools/call'),
+  params: z.object({
+    name: z.string(),
+    arguments: z.record(z.string(), z.any())
+  })
+});
 
 // 创建MCP服务器
-const server = new Server(
-  {
-    name: 'easemob-doc-search',
-    version: '1.0.0',
-  }
-);
+const server = new Server({
+  name: 'easemob-doc-search',
+  version: '1.0.0',
+});
 
 // 创建文档搜索服务实例
 const docSearchService = new DocSearchService();
 
 // 注册工具：搜索平台文档
-(server as any).setRequestHandler('tools/call', async (request: any) => {
+(server as any).setRequestHandler(ToolCallRequestSchema, async (request: any) => {
   const { name, arguments: args } = request.params;
 
   switch (name) {
