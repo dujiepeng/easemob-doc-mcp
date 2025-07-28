@@ -14,6 +14,7 @@ const client = new index_js_1.Client({
 const docSearchClient = new client_1.default({
     baseUrl: process.env.EASEMOB_API_URL || 'http://localhost:8000'
 });
+// 注册工具处理器
 client.setRequestHandler('tools/call', async (request) => {
     const { name, arguments: args } = request.params;
     switch (name) {
@@ -121,19 +122,19 @@ client.setRequestHandler('tools/call', async (request) => {
         }
         case 'get_available_platforms': {
             try {
-                // 这里需要实现获取平台列表的逻辑
+                // 返回硬编码的平台列表
                 const platforms = ['android', 'ios', 'web', 'flutter', 'react-native', 'unity', 'electron', 'harmonyos', 'applet', 'server-side'];
                 return {
                     content: [
                         {
                             type: 'text',
-                            text: JSON.stringify(platforms, null, 2)
+                            text: JSON.stringify({ platforms }, null, 2)
                         }
                     ]
                 };
             }
             catch (error) {
-                throw new Error(`获取平台列表失败: ${error}`);
+                throw new Error(`获取可用平台失败: ${error}`);
             }
         }
         case 'get_document_stats': {
@@ -156,13 +157,14 @@ client.setRequestHandler('tools/call', async (request) => {
             throw new Error(`未知的工具: ${name}`);
     }
 });
+// 启动MCP客户端
 async function main() {
     const transport = new stdio_js_1.StdioClientTransport({
         command: 'node',
         args: ['dist/mcp-client.js']
     });
     await client.connect(transport);
-    console.error('MCP客户端已启动');
+    console.error('✅ MCP客户端已启动');
 }
 main().catch(console.error);
 //# sourceMappingURL=mcp-client.js.map

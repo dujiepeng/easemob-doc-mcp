@@ -13,6 +13,7 @@ const docSearchClient = new EasemobDocSearchClient({
   baseUrl: process.env.EASEMOB_API_URL || 'http://localhost:8000'
 });
 
+// 注册工具处理器
 (client as any).setRequestHandler('tools/call', async (request: any) => {
   const { name, arguments: args } = request.params;
 
@@ -129,18 +130,18 @@ const docSearchClient = new EasemobDocSearchClient({
 
     case 'get_available_platforms': {
       try {
-        // 这里需要实现获取平台列表的逻辑
+        // 返回硬编码的平台列表
         const platforms = ['android', 'ios', 'web', 'flutter', 'react-native', 'unity', 'electron', 'harmonyos', 'applet', 'server-side'];
         return {
           content: [
             {
               type: 'text',
-              text: JSON.stringify(platforms, null, 2)
+              text: JSON.stringify({ platforms }, null, 2)
             }
           ]
         };
       } catch (error) {
-        throw new Error(`获取平台列表失败: ${error}`);
+        throw new Error(`获取可用平台失败: ${error}`);
       }
     }
 
@@ -165,13 +166,14 @@ const docSearchClient = new EasemobDocSearchClient({
   }
 });
 
+// 启动MCP客户端
 async function main() {
   const transport = new StdioClientTransport({
     command: 'node',
     args: ['dist/mcp-client.js']
   });
   await client.connect(transport);
-  console.error('MCP客户端已启动');
+  console.error('✅ MCP客户端已启动');
 }
 
 main().catch(console.error); 
