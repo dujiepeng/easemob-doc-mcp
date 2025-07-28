@@ -8,6 +8,9 @@ from pathlib import Path
 import uvicorn
 from fastapi.middleware.cors import CORSMiddleware
 import argparse
+from fastapi.responses import StreamingResponse
+import json
+import asyncio
 
 # 创建FastAPI应用
 app = FastAPI(title="文档搜索服务", description="基于FastMCP的文档搜索服务")
@@ -120,6 +123,98 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
         print(f"获取文档内容错误: {str(e)}")
         return {"content": None, "error": "获取文档内容失败"}
 
+# SSE流式响应生成器
+async def generate_sse_stream(data_generator):
+    """生成SSE流式响应"""
+    try:
+        async for chunk in data_generator:
+            if chunk:
+                yield f"data: {json.dumps(chunk, ensure_ascii=False)}\n\n"
+        # 发送结束信号
+        yield f"data: {json.dumps({'type': 'end', 'message': 'Stream completed'}, ensure_ascii=False)}\n\n"
+    except Exception as e:
+        error_data = {'type': 'error', 'message': str(e)}
+        yield f"data: {json.dumps(error_data, ensure_ascii=False)}\n\n"
+
+# 流式搜索文档
+async def stream_search_docs(platform: str):
+    """流式搜索文档并返回SSE数据"""
+    try:
+        # 发送开始信号
+        yield {'type': 'start', 'message': f'开始搜索 {platform} 平台文档...'}
+        
+        # 执行搜索
+        results = await search_platform_docs(platform)
+        
+        # 发送进度信息
+        yield {'type': 'progress', 'message': f'找到 {len(results)} 个文档'}
+        
+        # 分批发送结果
+        batch_size = 10
+        for i in range(0, len(results), batch_size):
+            batch = results[i:i + batch_size]
+            yield {
+                'type': 'results_batch',
+                'data': batch,
+                'batch': i // batch_size + 1,
+                'total_batches': (len(results) + batch_size - 1) // batch_size
+            }
+            await asyncio.sleep(0.1)  # 小延迟避免阻塞
+        
+        # 发送完成信号
+        yield {'type': 'complete', 'total_results': len(results)}
+        
+    except Exception as e:
+        yield {'type': 'error', 'message': f'搜索失败: {str(e)}'}
+
+# 流式获取文档内容
+async def stream_doc_content(doc_path: str, keyword: str = ""):
+    """流式获取文档内容并返回SSE数据"""
+    try:
+        # 发送开始信号
+        yield {'type': 'start', 'message': f'开始获取文档: {doc_path}'}
+        
+        # 获取文档内容
+        result = await get_document_content(doc_path, keyword)
+        
+        if result.get('error'):
+            yield {'type': 'error', 'message': result['error']}
+            return
+        
+        # 发送文档基本信息
+        yield {
+            'type': 'doc_info',
+            'docPath': result['docPath'],
+            'content_length': len(result['content']) if result['content'] else 0,
+            'matches_count': len(result['matches'])
+        }
+        
+        # 如果有搜索关键字，发送匹配结果
+        if keyword and result['matches']:
+            yield {'type': 'search_start', 'keyword': keyword}
+            
+            for i, match in enumerate(result['matches']):
+                yield {
+                    'type': 'match',
+                    'match_index': i + 1,
+                    'total_matches': len(result['matches']),
+                    'data': match
+                }
+                await asyncio.sleep(0.05)  # 小延迟
+        
+        # 发送完整内容（如果内容不太大）
+        if result['content'] and len(result['content']) < 50000:  # 50KB限制
+            yield {
+                'type': 'full_content',
+                'content': result['content']
+            }
+        
+        # 发送完成信号
+        yield {'type': 'complete', 'message': '文档内容获取完成'}
+        
+    except Exception as e:
+        yield {'type': 'error', 'message': f'获取文档内容失败: {str(e)}'}
+
 # API路由到FastAPI
 @app.get("/api/search-docs")
 async def api_search_docs(platform: str = Query(..., description="平台名称，如android, ios, web等")):
@@ -136,6 +231,44 @@ async def api_get_doc_content(
     content = await get_document_content(path, keyword)
     return content
 
+# SSE端点
+@app.get("/api/sse/search-docs")
+async def sse_search_docs(platform: str = Query(..., description="平台名称，如android, ios, web等")):
+    """SSE流式搜索文档"""
+    return StreamingResponse(
+        generate_sse_stream(stream_search_docs(platform)),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+@app.get("/api/sse/get-doc-content")
+async def sse_get_doc_content(
+    path: str = Query(..., description="文档相对路径"),
+    keyword: str = Query("", description="搜索关键字（可选）")
+):
+    """SSE流式获取文档内容"""
+    return StreamingResponse(
+        generate_sse_stream(stream_doc_content(path, keyword)),
+        media_type="text/event-stream",
+        headers={
+            "Cache-Control": "no-cache",
+            "Connection": "keep-alive",
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "*",
+        }
+    )
+
+# 健康检查端点
+@app.get("/health")
+async def health_check():
+    """健康检查端点"""
+    return {"status": "healthy", "service": "easemob-doc-search"}
+
 # 设置CORS
 app.add_middleware(
     CORSMiddleware,
@@ -149,6 +282,9 @@ app.add_middleware(
 def run_fastapi_server():
     """运行FastAPI服务器"""
     print("启动FastAPI服务器在 http://0.0.0.0:8000")
+    print("SSE端点:")
+    print("  - GET /api/sse/search-docs?platform={platform}")
+    print("  - GET /api/sse/get-doc-content?path={path}&keyword={keyword}")
     uvicorn.run(app, host="0.0.0.0", port=8000)
 
 def run_fastmcp_server():

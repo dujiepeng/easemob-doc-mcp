@@ -1,0 +1,38 @@
+# 源码文件
+src/
+tsconfig.json
+
+# 开发文件
+.vscode/
+.git/
+.gitignore
+.DS_Store
+
+# 测试文件
+**/*.test.js
+**/*.test.ts
+**/*.spec.js
+**/*.spec.ts
+test/
+tests/
+
+# 构建文件
+*.tsbuildinfo
+
+# 文档
+docs/
+*.md
+!README.md
+
+# 示例
+examples/
+
+# Docker
+Dockerfile
+docker-compose.yml
+.dockerignore
+
+# 其他
+.env
+.env.local
+.env.*.local 
