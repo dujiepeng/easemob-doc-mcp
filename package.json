@@ -11,8 +11,10 @@
     "build": "tsc",
     "dev": "tsc --watch",
     "start": "node dist/server.js",
-    "start:dev": "ts-node src/server.ts",
+    "start:dev": "nodemon",
     "test": "jest",
+    "test:basic": "node test/test-basic.js",
+    "test:sse": "node test/test_sse.js",
     "prepublishOnly": "npm run build",
     "mcp": "node dist/mcp-server.js",
     "mcp:dev": "ts-node src/mcp-server.ts"
