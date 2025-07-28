@@ -17,7 +17,10 @@
     "test:sse": "node test/test_sse.js",
     "prepublishOnly": "npm run build",
     "mcp": "node dist/mcp-server.js",
-    "mcp:dev": "ts-node src/mcp-server.ts"
+    "mcp:dev": "ts-node src/mcp-server.ts",
+    "mcp-client": "node dist/mcp-client.js",
+    "mcp-client:dev": "ts-node src/mcp-client.ts",
+    "setup-cursor": "node scripts/setup-cursor.js"
   },
   "keywords": [
     "easemob",
