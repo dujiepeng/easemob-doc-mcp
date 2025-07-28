@@ -24,8 +24,8 @@ program
       const client = new EasemobDocSearchClient({ baseUrl: options.url });
       const result = await client.searchDocs(platform);
       console.log(`找到 ${result.results.length} 个文档:`);
-      result.results.forEach((doc: any) => {
-        console.log(`- ${doc.path} (${doc.platform})`);
+      result.results.forEach((docPath: string) => {
+        console.log(`- ${docPath}`);
       });
     } catch (error) {
       console.error('搜索失败:', error);
