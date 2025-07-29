@@ -1,0 +1,2 @@
+[console_scripts]
+easemob-doc-mcp = fastmcp_server.run_mcp:main
