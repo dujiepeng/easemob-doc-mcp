@@ -7,11 +7,20 @@
 ### 快速安装（推荐）
 
 ```bash
-# 使用默认端口 9000
+# 使用默认配置 (HTTP传输，端口443)
 bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)
 
 # 指定自定义端口
 bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080
+
+# 指定传输协议和完整参数
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --transport http --port 443 --host 0.0.0.0 --path /mcp/
+
+# 使用stdio传输（无需端口配置）
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --transport stdio
+
+# 使用SSE传输
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --transport sse --port 8080
 
 # 查看帮助信息
 bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --help
@@ -20,11 +29,14 @@ bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/ma
 ### 卸载
 
 ```bash
-# 卸载默认端口服务
+# 卸载默认配置服务
 bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh)
 
 # 卸载指定端口服务
 bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh) --port 8080
+
+# 卸载指定传输协议服务
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh) --transport http --port 443 --host 0.0.0.0 --path /mcp/
 ```
 
 ## 功能特点
@@ -50,10 +62,26 @@ pip install -r requirements.txt
 ### 本地开发
 
 ```bash
+# 使用默认配置 (HTTP传输，端口443)
 python src/server.py
+
+# 指定端口
+python src/server.py --port 8080
+
+# 指定传输协议和完整参数
+python src/server.py --transport http --port 443 --host 0.0.0.0 --path /mcp/
+
+# 使用stdio传输（适用于本地开发）
+python src/server.py --transport stdio
+
+# 使用SSE传输
+python src/server.py --transport sse --port 8080
+
+# 查看帮助信息
+python src/server.py --help
 ```
 
-服务器将在 `http://0.0.0.0:9000` 上运行，提供 MCP 服务。
+服务器将在指定的配置上运行，提供 MCP 服务。
 
 ### 在 Cursor 中配置
 

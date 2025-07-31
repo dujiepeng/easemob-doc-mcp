@@ -1,5 +1,6 @@
 from fastmcp import FastMCP
 import os
+import argparse
 from typing import List, Dict, Any
 from pathlib import Path
 
@@ -114,13 +115,58 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
 
 def main():
     """主函数，启动MCP服务器"""
-    print("启动环信文档搜索MCP服务器")
-    mcp.run(
-        transport="http",
-        host="0.0.0.0",           # Bind to all interfaces
-        port=9000,                # Custom port
-        log_level="DEBUG",        # Override global log level
+    # 解析命令行参数
+    parser = argparse.ArgumentParser(description="环信文档搜索 MCP 服务")
+    parser.add_argument(
+        "--transport", "-t",
+        choices=["stdio", "http", "sse"],
+        default="http",
+        help="传输协议 (默认: http)"
     )
+    parser.add_argument(
+        "--host",
+        default="0.0.0.0",
+        help="HTTP传输时绑定的主机 (默认: 0.0.0.0)"
+    )
+    parser.add_argument(
+        "--port", "-p",
+        type=int,
+        default=443,
+        help="HTTP传输时绑定的端口 (默认: 443)"
+    )
+    parser.add_argument(
+        "--path",
+        default="/mcp/",
+        help="HTTP传输时绑定的路径 (默认: /mcp/)"
+    )
+    
+    args = parser.parse_args()
+    
+    print(f"启动环信文档搜索MCP服务器")
+    print(f"传输协议: {args.transport}")
+    if args.transport in ["http", "sse"]:
+        print(f"主机: {args.host}")
+        print(f"端口: {args.port}")
+        print(f"路径: {args.path}")
+        print(f"服务地址: http://{args.host}:{args.port}{args.path}")
+    
+    # 根据传输协议启动服务器
+    if args.transport == "stdio":
+        mcp.run(transport="stdio")
+    elif args.transport == "sse":
+        mcp.run(
+            transport="sse",
+            host=args.host,
+            port=args.port,
+            path=args.path
+        )
+    else:  # http
+        mcp.run(
+            transport="http",
+            host=args.host,
+            port=args.port,
+            path=args.path
+        )
 
 # 主入口点
 if __name__ == "__main__":

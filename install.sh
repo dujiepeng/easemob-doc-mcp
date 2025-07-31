@@ -3,6 +3,7 @@
 # 环信文档搜索 MCP 服务一键部署脚本
 # 使用方法: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)
 # 指定端口: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080
+# 指定传输协议: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --transport http --port 443 --host 0.0.0.0 --path /mcp/
 
 set -e
 
@@ -14,14 +15,33 @@ BLUE='\033[0;34m'
 NC='\033[0m' # No Color
 
 # 默认配置
-DEFAULT_PORT=9000
+DEFAULT_TRANSPORT="http"
+DEFAULT_HOST="0.0.0.0"
+DEFAULT_PORT=443
+DEFAULT_PATH="/mcp/"
+
+TRANSPORT=$DEFAULT_TRANSPORT
+HOST=$DEFAULT_HOST
 PORT=$DEFAULT_PORT
+PATH=$DEFAULT_PATH
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
     case $1 in
-        --port)
+        --transport|-t)
+            TRANSPORT="$2"
+            shift 2
+            ;;
+        --host)
+            HOST="$2"
+            shift 2
+            ;;
+        --port|-p)
             PORT="$2"
+            shift 2
+            ;;
+        --path)
+            PATH="$2"
             shift 2
             ;;
         --help|-h)
@@ -30,10 +50,14 @@ while [[ $# -gt 0 ]]; do
             echo "使用方法:"
             echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)"
             echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080"
+            echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --transport http --port 443 --host 0.0.0.0 --path /mcp/"
             echo ""
             echo "参数:"
-            echo "  --port PORT    指定服务端口 (默认: $DEFAULT_PORT)"
-            echo "  --help, -h     显示帮助信息"
+            echo "  --transport, -t TRANSPORT  传输协议 (stdio, http, sse) (默认: $DEFAULT_TRANSPORT)"
+            echo "  --host HOST                HTTP传输时绑定的主机 (默认: $DEFAULT_HOST)"
+            echo "  --port, -p PORT            HTTP传输时绑定的端口 (默认: $DEFAULT_PORT)"
+            echo "  --path PATH                HTTP传输时绑定的路径 (默认: $DEFAULT_PATH)"
+            echo "  --help, -h                 显示帮助信息"
             exit 0
             ;;
         *)
@@ -44,19 +68,27 @@ while [[ $# -gt 0 ]]; do
     esac
 done
 
-# 验证端口号
-if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
-    echo -e "${RED}[ERROR]${NC} 无效的端口号: $PORT (必须是1-65535之间的数字)"
+# 验证传输协议
+if [[ ! "$TRANSPORT" =~ ^(stdio|http|sse)$ ]]; then
+    echo -e "${RED}[ERROR]${NC} 无效的传输协议: $TRANSPORT (必须是 stdio, http, 或 sse)"
     exit 1
 fi
 
-# 检查端口是否被占用
-if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
-    echo -e "${YELLOW}[WARNING]${NC} 端口 $PORT 已被占用"
-    read -p "是否继续？(y/N): " -n 1 -r
-    echo
-    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+# 验证端口号（仅对http和sse传输）
+if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+    if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+        echo -e "${RED}[ERROR]${NC} 无效的端口号: $PORT (必须是1-65535之间的数字)"
         exit 1
+    fi
+    
+    # 检查端口是否被占用
+    if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+        echo -e "${YELLOW}[WARNING]${NC} 端口 $PORT 已被占用"
+        read -p "是否继续？(y/N): " -n 1 -r
+        echo
+        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+            exit 1
+        fi
     fi
 fi
 
@@ -111,7 +143,12 @@ check_system() {
     fi
     
     print_info "操作系统: $OS $VER"
-    print_info "服务端口: $PORT"
+    print_info "传输协议: $TRANSPORT"
+    if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+        print_info "主机: $HOST"
+        print_info "端口: $PORT"
+        print_info "路径: $PATH"
+    fi
     
     # 检查Python
     if ! command -v python3 &> /dev/null; then
@@ -231,24 +268,15 @@ install_dependencies() {
     print_success "依赖安装完成"
 }
 
-# 修改服务器配置以使用指定端口
-configure_port() {
-    print_info "配置服务端口为 $PORT..."
-    
-    cd $PROJECT_DIR
-    
-    # 备份原文件
-    cp src/server.py src/server.py.bak
-    
-    # 修改端口配置
-    sed -i "s/port=9000/port=$PORT/g" src/server.py
-    
-    print_success "端口配置完成"
-}
-
 # 创建systemd服务
 create_service() {
     print_info "创建systemd服务..."
+    
+    # 构建启动命令
+    START_CMD="$VENV_DIR/bin/python src/server.py --transport $TRANSPORT"
+    if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+        START_CMD="$START_CMD --host $HOST --port $PORT --path $PATH"
+    fi
     
     # 创建服务文件
     cat > /tmp/easemob-doc-mcp.service << EOF
@@ -261,7 +289,7 @@ Type=simple
 User=$SERVICE_USER
 WorkingDirectory=$PROJECT_DIR
 Environment=PATH=$VENV_DIR/bin
-ExecStart=$VENV_DIR/bin/python src/server.py
+ExecStart=$START_CMD
 Restart=always
 RestartSec=10
 StandardOutput=journal
@@ -305,11 +333,21 @@ test_service() {
     # 等待服务完全启动
     sleep 5
     
-    # 测试MCP端点
-    if curl -s http://localhost:$PORT/mcp/ > /dev/null; then
-        print_success "服务测试通过！"
+    # 仅对HTTP传输进行测试
+    if [[ "$TRANSPORT" == "http" ]]; then
+        if curl -s http://$HOST:$PORT$PATH > /dev/null; then
+            print_success "服务测试通过！"
+        else
+            print_warning "服务测试失败，但服务可能仍在启动中"
+        fi
+    elif [[ "$TRANSPORT" == "sse" ]]; then
+        if curl -s http://$HOST:$PORT$PATH > /dev/null; then
+            print_success "SSE服务测试通过！"
+        else
+            print_warning "SSE服务测试失败，但服务可能仍在启动中"
+        fi
     else
-        print_warning "服务测试失败，但服务可能仍在启动中"
+        print_info "stdio传输模式，跳过HTTP测试"
     fi
 }
 
@@ -322,7 +360,12 @@ show_completion() {
     echo "  项目目录: $PROJECT_DIR"
     echo "  虚拟环境: $VENV_DIR"
     echo "  服务名称: easemob-doc-mcp"
-    echo "  服务端口: $PORT"
+    echo "  传输协议: $TRANSPORT"
+    if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+        echo "  主机: $HOST"
+        echo "  端口: $PORT"
+        echo "  路径: $PATH"
+    fi
     echo
     echo "服务管理:"
     echo "  查看状态: sudo systemctl status easemob-doc-mcp"
@@ -331,18 +374,34 @@ show_completion() {
     echo "  重启服务: sudo systemctl restart easemob-doc-mcp"
     echo "  查看日志: sudo journalctl -u easemob-doc-mcp -f"
     echo
-    echo "服务地址:"
-    echo "  HTTP: http://$(hostname -I | awk '{print $1}'):$PORT"
-    echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT/mcp/"
-    echo
-    echo "Cursor配置:"
-    echo "  在Cursor的MCP配置中添加:"
-    echo "  {"
-    echo "    \"easemob-doc-mcp\": {"
-    echo "      \"transport\": \"http\","
-    echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT/mcp/\""
-    echo "    }"
-    echo "  }"
+    if [[ "$TRANSPORT" == "http" ]]; then
+        echo "服务地址:"
+        echo "  HTTP: http://$(hostname -I | awk '{print $1}'):$PORT"
+        echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT$PATH"
+        echo
+        echo "Cursor配置:"
+        echo "  在Cursor的MCP配置中添加:"
+        echo "  {"
+        echo "    \"easemob-doc-mcp\": {"
+        echo "      \"transport\": \"http\","
+        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$PATH\""
+        echo "    }"
+        echo "  }"
+    elif [[ "$TRANSPORT" == "sse" ]]; then
+        echo "服务地址:"
+        echo "  SSE: http://$(hostname -I | awk '{print $1}'):$PORT$PATH"
+        echo
+        echo "Cursor配置:"
+        echo "  在Cursor的MCP配置中添加:"
+        echo "  {"
+        echo "    \"easemob-doc-mcp\": {"
+        echo "      \"transport\": \"sse\","
+        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$PATH\""
+        echo "    }"
+        echo "  }"
+    else
+        echo "stdio传输模式，无需HTTP配置"
+    fi
     echo
     print_success "部署完成！服务已自动启动并设置为开机自启。"
 }
@@ -360,7 +419,6 @@ main() {
     setup_project
     setup_venv
     install_dependencies
-    configure_port
     create_service
     start_service
     test_service
