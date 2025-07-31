@@ -21,7 +21,7 @@ pip install -r requirements.txt
 
 ## 使用方法
 
-### 启动 MCP 服务器
+### 本地开发
 
 ```bash
 python src/server.py
@@ -46,6 +46,85 @@ python src/server.py
   }
 }
 ```
+
+## 服务器部署
+
+### 方案1：使用 systemd 服务（推荐）
+
+1. 运行部署脚本：
+   ```bash
+   chmod +x deploy.sh
+   ./deploy.sh
+   ```
+
+2. 管理服务：
+   ```bash
+   # 查看服务状态
+   sudo systemctl status easemob-doc-mcp
+   
+   # 启动服务
+   sudo systemctl start easemob-doc-mcp
+   
+   # 停止服务
+   sudo systemctl stop easemob-doc-mcp
+   
+   # 重启服务
+   sudo systemctl restart easemob-doc-mcp
+   
+   # 查看日志
+   sudo journalctl -u easemob-doc-mcp -f
+   ```
+
+### 方案2：使用 Docker 部署
+
+1. 构建并启动容器：
+   ```bash
+   docker-compose up -d
+   ```
+
+2. 管理容器：
+   ```bash
+   # 查看容器状态
+   docker-compose ps
+   
+   # 查看日志
+   docker-compose logs -f
+   
+   # 重启服务
+   docker-compose restart
+   
+   # 停止服务
+   docker-compose down
+   ```
+
+### 方案3：使用 Supervisor 管理
+
+1. 安装 Supervisor：
+   ```bash
+   sudo apt-get install supervisor
+   ```
+
+2. 复制配置文件：
+   ```bash
+   sudo cp easemob-doc-mcp.conf /etc/supervisor/conf.d/
+   sudo supervisorctl reread
+   sudo supervisorctl update
+   ```
+
+3. 管理服务：
+   ```bash
+   # 启动服务
+   sudo supervisorctl start easemob-doc-mcp
+   
+   # 停止服务
+   sudo supervisorctl stop easemob-doc-mcp
+   
+   # 重启服务
+   sudo supervisorctl restart easemob-doc-mcp
+   
+   # 查看状态
+   sudo supervisorctl status
+   ```
 
 ## 可用的 MCP 工具
 
@@ -117,7 +196,11 @@ easemob-doc-mcp/
 │   ├── web/              # Web文档
 │   └── ...               # 其他平台文档
 ├── pyproject.toml        # 项目配置
-└── requirements.txt      # 依赖列表
+├── requirements.txt      # 依赖列表
+├── deploy.sh            # 部署脚本
+├── Dockerfile           # Docker配置
+├── docker-compose.yml   # Docker Compose配置
+└── easemob-doc-mcp.conf # Supervisor配置
 ```
 
 ## 开发

@@ -1,0 +1,20 @@
+version: '3.8'
+
+services:
+  easemob-doc-mcp:
+    build: .
+    container_name: easemob-doc-mcp
+    ports:
+      - "9000:9000"
+    restart: unless-stopped
+    environment:
+      - PYTHONUNBUFFERED=1
+    volumes:
+      # 可选：挂载文档目录以便动态更新
+      - ./document:/app/document:ro
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:9000/mcp/"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s 

@@ -115,7 +115,12 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
 def main():
     """主函数，启动MCP服务器"""
     print("启动环信文档搜索MCP服务器")
-    mcp.run()
+    mcp.run(
+        transport="http",
+        host="0.0.0.0",           # Bind to all interfaces
+        port=9000,                # Custom port
+        log_level="DEBUG",        # Override global log level
+    )
 
 # 主入口点
 if __name__ == "__main__":
