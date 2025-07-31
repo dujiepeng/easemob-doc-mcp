@@ -7,13 +7,24 @@
 ### 快速安装（推荐）
 
 ```bash
-bash <(curl -s -L https://raw.githubusercontent.com/你的用户名/easemob-doc-mcp/main/install.sh)
+# 使用默认端口 9000
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)
+
+# 指定自定义端口
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080
+
+# 查看帮助信息
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --help
 ```
 
 ### 卸载
 
 ```bash
-bash <(curl -s -L https://raw.githubusercontent.com/你的用户名/easemob-doc-mcp/main/uninstall.sh)
+# 卸载默认端口服务
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh)
+
+# 卸载指定端口服务
+bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh) --port 8080
 ```
 
 ## 功能特点
@@ -22,6 +33,7 @@ bash <(curl -s -L https://raw.githubusercontent.com/你的用户名/easemob-doc-
 - 获取文档全文内容
 - 在文档中搜索关键字并返回上下文
 - 支持 MCP 协议，可与 Cursor 等工具集成
+- 支持自定义端口部署
 
 ## 安装
 

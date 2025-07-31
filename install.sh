@@ -2,6 +2,7 @@
 
 # 环信文档搜索 MCP 服务一键部署脚本
 # 使用方法: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)
+# 指定端口: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080
 
 set -e
 
@@ -11,6 +12,53 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m' # No Color
+
+# 默认配置
+DEFAULT_PORT=9000
+PORT=$DEFAULT_PORT
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --port)
+            PORT="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "环信文档搜索 MCP 服务一键部署脚本"
+            echo ""
+            echo "使用方法:"
+            echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)"
+            echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh) --port 8080"
+            echo ""
+            echo "参数:"
+            echo "  --port PORT    指定服务端口 (默认: $DEFAULT_PORT)"
+            echo "  --help, -h     显示帮助信息"
+            exit 0
+            ;;
+        *)
+            echo "未知参数: $1"
+            echo "使用 --help 查看帮助信息"
+            exit 1
+            ;;
+    esac
+done
+
+# 验证端口号
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    echo -e "${RED}[ERROR]${NC} 无效的端口号: $PORT (必须是1-65535之间的数字)"
+    exit 1
+fi
+
+# 检查端口是否被占用
+if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+    echo -e "${YELLOW}[WARNING]${NC} 端口 $PORT 已被占用"
+    read -p "是否继续？(y/N): " -n 1 -r
+    echo
+    if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+        exit 1
+    fi
+fi
 
 # 配置变量
 PROJECT_NAME="easemob-doc-mcp"
@@ -63,6 +111,7 @@ check_system() {
     fi
     
     print_info "操作系统: $OS $VER"
+    print_info "服务端口: $PORT"
     
     # 检查Python
     if ! command -v python3 &> /dev/null; then
@@ -182,6 +231,21 @@ install_dependencies() {
     print_success "依赖安装完成"
 }
 
+# 修改服务器配置以使用指定端口
+configure_port() {
+    print_info "配置服务端口为 $PORT..."
+    
+    cd $PROJECT_DIR
+    
+    # 备份原文件
+    cp src/server.py src/server.py.bak
+    
+    # 修改端口配置
+    sed -i "s/port=9000/port=$PORT/g" src/server.py
+    
+    print_success "端口配置完成"
+}
+
 # 创建systemd服务
 create_service() {
     print_info "创建systemd服务..."
@@ -242,7 +306,7 @@ test_service() {
     sleep 5
     
     # 测试MCP端点
-    if curl -s http://localhost:9000/mcp/ > /dev/null; then
+    if curl -s http://localhost:$PORT/mcp/ > /dev/null; then
         print_success "服务测试通过！"
     else
         print_warning "服务测试失败，但服务可能仍在启动中"
@@ -258,6 +322,7 @@ show_completion() {
     echo "  项目目录: $PROJECT_DIR"
     echo "  虚拟环境: $VENV_DIR"
     echo "  服务名称: easemob-doc-mcp"
+    echo "  服务端口: $PORT"
     echo
     echo "服务管理:"
     echo "  查看状态: sudo systemctl status easemob-doc-mcp"
@@ -267,15 +332,15 @@ show_completion() {
     echo "  查看日志: sudo journalctl -u easemob-doc-mcp -f"
     echo
     echo "服务地址:"
-    echo "  HTTP: http://$(hostname -I | awk '{print $1}'):9000"
-    echo "  MCP: http://$(hostname -I | awk '{print $1}'):9000/mcp/"
+    echo "  HTTP: http://$(hostname -I | awk '{print $1}'):$PORT"
+    echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT/mcp/"
     echo
     echo "Cursor配置:"
     echo "  在Cursor的MCP配置中添加:"
     echo "  {"
     echo "    \"easemob-doc-mcp\": {"
     echo "      \"transport\": \"http\","
-    echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):9000/mcp/\""
+    echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT/mcp/\""
     echo "    }"
     echo "  }"
     echo
@@ -295,6 +360,7 @@ main() {
     setup_project
     setup_venv
     install_dependencies
+    configure_port
     create_service
     start_service
     test_service

@@ -1,6 +1,8 @@
 #!/bin/bash
 
 # 环信文档搜索 MCP 服务卸载脚本
+# 使用方法: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh)
+# 指定端口: bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh) --port 8080
 
 set -e
 
@@ -10,6 +12,43 @@ GREEN='\033[0;32m'
 YELLOW='\033[1;33m'
 BLUE='\033[0;34m'
 NC='\033[0m'
+
+# 默认配置
+DEFAULT_PORT=9000
+PORT=$DEFAULT_PORT
+
+# 解析命令行参数
+while [[ $# -gt 0 ]]; do
+    case $1 in
+        --port)
+            PORT="$2"
+            shift 2
+            ;;
+        --help|-h)
+            echo "环信文档搜索 MCP 服务卸载脚本"
+            echo ""
+            echo "使用方法:"
+            echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh)"
+            echo "  bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/uninstall.sh) --port 8080"
+            echo ""
+            echo "参数:"
+            echo "  --port PORT    指定服务端口 (默认: $DEFAULT_PORT)"
+            echo "  --help, -h     显示帮助信息"
+            exit 0
+            ;;
+        *)
+            echo "未知参数: $1"
+            echo "使用 --help 查看帮助信息"
+            exit 1
+            ;;
+    esac
+done
+
+# 验证端口号
+if ! [[ "$PORT" =~ ^[0-9]+$ ]] || [ "$PORT" -lt 1 ] || [ "$PORT" -gt 65535 ]; then
+    echo -e "${RED}[ERROR]${NC} 无效的端口号: $PORT (必须是1-65535之间的数字)"
+    exit 1
+fi
 
 # 配置变量
 PROJECT_NAME="easemob-doc-mcp"
@@ -36,6 +75,8 @@ echo "=========================================="
 echo "  环信文档搜索 MCP 服务卸载脚本"
 echo "=========================================="
 echo -e "${NC}"
+
+print_info "服务端口: $PORT"
 
 print_warning "此操作将完全移除环信文档搜索 MCP 服务"
 read -p "是否继续？(y/N): " -n 1 -r
@@ -75,6 +116,14 @@ fi
 # 清理日志
 print_info "清理日志..."
 sudo journalctl --vacuum-time=1s --unit=easemob-doc-mcp 2>/dev/null || true
+
+# 检查端口是否还在使用
+print_info "检查端口 $PORT 状态..."
+if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+    print_warning "端口 $PORT 仍被占用，可能需要手动检查"
+else
+    print_success "端口 $PORT 已释放"
+fi
 
 print_success "=== 卸载完成 ==="
 print_info "环信文档搜索 MCP 服务已完全移除" 
