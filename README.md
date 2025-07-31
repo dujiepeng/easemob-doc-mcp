@@ -2,6 +2,20 @@
 
 这是一个基于 FastMCP 构建的环信文档搜索服务，用于搜索和检索环信各平台的技术文档。
 
+## 🚀 一键部署
+
+### 快速安装（推荐）
+
+```bash
+bash <(curl -s -L https://raw.githubusercontent.com/你的用户名/easemob-doc-mcp/main/install.sh)
+```
+
+### 卸载
+
+```bash
+bash <(curl -s -L https://raw.githubusercontent.com/你的用户名/easemob-doc-mcp/main/uninstall.sh)
+```
+
 ## 功能特点
 
 - 按平台搜索文档（Android、iOS、Web、Flutter、React Native等）
@@ -197,6 +211,8 @@ easemob-doc-mcp/
 │   └── ...               # 其他平台文档
 ├── pyproject.toml        # 项目配置
 ├── requirements.txt      # 依赖列表
+├── install.sh           # 一键安装脚本
+├── uninstall.sh         # 卸载脚本
 ├── deploy.sh            # 部署脚本
 ├── Dockerfile           # Docker配置
 ├── docker-compose.yml   # Docker Compose配置
