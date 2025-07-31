@@ -1,16 +1,8 @@
-from fastapi import FastAPI, HTTPException, Query
 from fastmcp import FastMCP
 import os
-import glob
-import re
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any
 from pathlib import Path
-import uvicorn
-from fastapi.middleware.cors import CORSMiddleware
-import argparse
 
-# 创建FastAPI应用
-app = FastAPI(title="文档搜索服务", description="基于FastMCP的文档搜索服务")
 # 创建FastMCP实例
 mcp = FastMCP()
 
@@ -120,60 +112,11 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
         print(f"获取文档内容错误: {str(e)}")
         return {"content": None, "error": "获取文档内容失败"}
 
-# API路由到FastAPI
-@app.get("/api/search-docs")
-async def api_search_docs(platform: str = Query(..., description="平台名称，如android, ios, web等")):
-    """搜索特定平台的文档API"""
-    results = await search_platform_docs(platform)
-    return {"results": results}
-
-@app.get("/api/get-doc-content")
-async def api_get_doc_content(
-    path: str = Query(..., description="文档相对路径"),
-    keyword: str = Query("", description="搜索关键字（可选）")
-):
-    """获取文档内容API"""
-    content = await get_document_content(path, keyword)
-    return content
-
-# 设置CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=["*"],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
-
-# 主入口点
-def run_fastapi_server():
-    """运行FastAPI服务器"""
-    print("启动FastAPI服务器在 http://0.0.0.0:8000")
-    uvicorn.run(app, host="0.0.0.0", port=8000)
-
-def run_fastmcp_server():
-    """运行FastMCP服务器"""
-    print("启动FastMCP服务器")
+def main():
+    """主函数，启动MCP服务器"""
+    print("启动环信文档搜索MCP服务器")
     mcp.run()
 
+# 主入口点
 if __name__ == "__main__":
-    parser = argparse.ArgumentParser(description="文档搜索服务")
-    parser.add_argument("--mode", choices=["api", "mcp", "both"], default="api", 
-                        help="运行模式: api=FastAPI服务器, mcp=FastMCP服务器, both=两者都运行")
-    
-    args = parser.parse_args()
-    
-    if args.mode == "api":
-        run_fastapi_server()
-    elif args.mode == "mcp":
-        run_fastmcp_server()
-    elif args.mode == "both":
-        # 对于同时运行两个服务器，我们需要在单独的进程中运行它们
-        import threading
-        
-        api_thread = threading.Thread(target=run_fastapi_server)
-        api_thread.daemon = True
-        api_thread.start()
-        
-        # FastMCP在主线程运行
-        run_fastmcp_server() 
+    main() 

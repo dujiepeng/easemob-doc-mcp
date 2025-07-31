@@ -12,14 +12,12 @@ authors = [
 readme = "README.md"
 requires-python = ">=3.8"
 dependencies = [
-    "fastapi>=0.103.1",
-    "uvicorn>=0.23.2",
-    "fastmcp>=0.1.0",
+    "fastmcp>=2.9.0",
     "pydantic>=2.3.0"
 ]
 
 [project.scripts]
-easemob-doc-mcp = "fastmcp_server.run_mcp:main"
+easemob-doc-mcp = "fastmcp_server.main:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
