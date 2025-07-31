@@ -16,8 +16,8 @@ dependencies = [
 ]
 
 [project.scripts]
-easemob-doc-mcp = "fastmcp_server.main:main"
+easemob-doc-mcp = "src.server:main"
 
 [tool.setuptools.packages.find]
 where = ["."]
-include = ["fastmcp_server*"] 
+include = ["src*"] 
