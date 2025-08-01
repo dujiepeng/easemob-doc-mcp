@@ -14,7 +14,7 @@
 
 - `IChatManager.FetchHistoryMessagesFromServerBy` 根据 `FetchServerMessagesOption` 类分页获取服务器保存的指定会话中的消息。
 - `Conversation.LoadMessages` 读取本地指定会话的消息。
-- `IChatManager.LoadMessage` 根据消息 ID 获取消息。
+- `IChatManager.LoadMessage` 根据消息 ID 获取单个消息。
 - `Conversation.LoadMessagesWithMsgType` 获取本地单个会话中特定类型的消息。
 - `Conversation.LoadMessagesWithTime` 获取本地单个会话中一定时间段内的消息。
 - `Conversion#MessagesCount` 获取 SDK 本地数据库中会话某个时间段内的全部消息数。
@@ -44,8 +44,8 @@
 :::tip
 1. 若使用该 API，需将 SDK 升级至 V1.2.0 或以上版本。
 2. **默认可获取单聊和群组聊天的历史消息。若要获取聊天室的历史消息，需升级至 1.3.0 版本，并联系环信商务。**
-3. 拉取服务器漫游消息时会读取服务端的消息已读和送达状态。该功能只适用于单聊消息，默认关闭，如果需要，请联系环信商务开通。
-4. 历史消息在服务器上的存储时间与产品的套餐包相关，详见 [IM 套餐包功能对比](/product/product_package_feature.html)。
+3. 获取单聊历史消息时会读取服务端保存的消息送达状态和已读状态。该功能默认关闭，如果需要，请联系环信商务开通。
+4. 历史消息在服务器上的存储时间与产品的套餐包相关，详见 [IM 套餐包功能详情](/product/product_package_feature.html)。
 :::
 
 ```csharp
@@ -119,7 +119,7 @@ conv.LoadMessages(startMsgId, pagesize, callback:new ValueCallBack<List<Message>
 ));
 ```
 
-### 根据消息 ID 获取本地消息
+### 根据消息 ID 获取单个本地消息
 
 你可以调用 `LoadMessage` 方法根据消息 ID 获取本地存储的指定消息。如果消息不存在会返回空值。
 

@@ -23,14 +23,14 @@ Server SDK 2.0 提供了用户、消息、群组、聊天室等资源的操作�
 <dependency>
     <groupId>com.easemob.im</groupId>
     <artifactId>im-sdk-core</artifactId>
-    <version>1.0.13</version>
+    <version>1.0.16</version>
 </dependency>
 ```
 
 如果你的项目使用 Gradle 构建，可以在 build.gradle 中添加下面代码：
 
 ```gradle
-implementation 'com.easemob.im:im-sdk-core:V1.0.13'
+implementation 'com.easemob.im:im-sdk-core:V1.0.16'
 ```
 
 ### 使用
@@ -186,6 +186,14 @@ try {
 
 ## 更新日志
 
+### V1.0.16 2025-07-25
+
+1. 增加 "批量获取用户属性" 功能。
+2. 增加 "获取群组成员数量" 功能。
+3. 增加 "获取聊天室成员数量" 功能。
+
+以上更新内容请到 MetadataApi、GroupApi、RoomApi 中查看。
+
 ### V1.0.13 2025-04-22
 
 1. 增加 "向 app 在线用户发送广播消息" 功能。
@@ -218,7 +226,7 @@ try {
 ### V1.0.9 2024-07-29
 
 1. 增加[发送聊天室全局广播消息](message_broadcast.html#发送聊天室全局广播消息)功能。
-2. 增加[导入好友列表](user_relationship.html#导入好友列表)功能。
+2. 增加[导入好友列表](user_relationship_friend_import.html)功能。
 3. 增加[强制用户从单设备下线](account_system.html#强制用户从单设备下线)功能。
 4. [创建群组增加群组头像属性](group_manage.html#创建群组)。
 5. [修改群组信息支持群组头像修改](group_manage.html#修改群组信息)。
@@ -243,7 +251,7 @@ try {
 
 1. 增加[批量移除群组成员](group_member.html#批量移除群组成员)功能。
 
-2. 增加[一次性获取好友列表](user_relationship.html#一次性获取好友列表)功能。
+2. 增加[一次性获取好友列表](user_relationship_friend_list_obtain.html)功能。
 
 3. [注册用户](account_system.html#开放注册单个用户)增加推送昵称参数。
 

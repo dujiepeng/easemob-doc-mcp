@@ -1,6 +1,6 @@
 # 环信即时通讯 IM iOS Demo 
 
-环信即时通讯 IM iOS Demo 提供用户登录、单聊、群组、聊天室、子区、消息(文字、表情、语音、视频、图片、文件等)发送及管理、会话管理、好友管理、用户属性、用户在线状态（Presence）以及实时音视频通话等功能。
+环信即时通讯 IM iOS Demo 提供用户登录、单聊、群组、子区、消息(文字、表情、语音、视频、图片、文件等)发送及管理、会话管理、好友管理、用户属性、用户在线状态（Presence）以及实时音视频通话等功能。
 
 ## 体验 Demo 
 
@@ -21,7 +21,7 @@
   <ImageItem src="/images/uikit/chatuikit/ios/main_contact_list.png" title="通讯录" />
 </ImageGallery>
 
-## 快速跑通 Demo
+## 快速跑通 Demo 源码
 
 ### 开发环境要求
 

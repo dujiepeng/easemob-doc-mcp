@@ -144,6 +144,21 @@ NSArray *admins = aGroup.adminList;
 
 ### 获取群成员列表
 
+1. 自 4.14.0 版本开始，获取群成员列表时可包括群成员的用户 ID、群成员角色和入群时间。
+
+```objectivec
+NSString* cursor = nil;
+[EMClient.sharedClient.groupManager fetchGroupMemberInfoListFromServerWithGroupId:@"groupId" cursor:cursor limit:20 completion:^(EMCursorResult<EMGroupMemberInfo *> * _Nullable cursorResult, EMError * _Nullable error) {
+        for (EMGroupMemberInfo * memberInfo in cursorResult.list) {
+            NSString* userId = memberInfo.userId;// 成员Id
+            NSUInteger joinedTs = memberInfo.joinedTimestamp; // 成员入群时间
+            EMGroupPermissionType role = memberInfo.role; //成员角色
+        }
+    }];
+```
+
+2. 获取群成员列表，只包含群成员的用户 ID。
+
 - 当群成员少于 200 人时，你可以调用从服务器获取群组详情的方法 `getGroupSpecificationFromServerWithId` 获取获取群成员列表，包括群主、群管理员和普通群成员：
 
 ```objectivec
@@ -176,7 +191,7 @@ do {
                                       error:nil];
     [memberList addObjectsFromArray:result.list];
     cursor = result.cursor;
-} while (result && result.list < pageSize);
+} while (result && result.list.count == pageSize);
 ```
 
 ### 获取群组列表
@@ -217,7 +232,7 @@ do {
 
 ### 查询当前用户已加入的群组数量
 
-自 4.2.0 版本开始，你可以调用 `EMGroupManager#getJoinedGroupsCountFromServerWithCompletion` 方法用于从服务器获取当前用户已加入的群组数量。单个用户可加入群组数量的上限取决于你订阅的即时通讯的套餐包，详见 [IM 套餐包功能对比](/product/product_package_feature.html)。
+自 4.2.0 版本开始，你可以调用 `EMGroupManager#getJoinedGroupsCountFromServerWithCompletion` 方法用于从服务器获取当前用户已加入的群组数量。单个用户可加入群组数量的上限取决于你订阅的即时通讯的套餐包，详见 [IM 套餐包功能详情](/product/product_package_feature.html)。
 
 ```objectivec
 [EMClient.sharedClient.groupManager getJoinedGroupsCountFromServerWithCompletion:^(NSInteger groupCount, EMError * _Nullable aError) {

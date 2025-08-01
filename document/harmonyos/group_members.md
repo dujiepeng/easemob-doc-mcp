@@ -22,7 +22,7 @@
 - 完成 SDK 初始化，详见 [快速开始](quickstart.html)；
 - 了解环信即时通讯 IM 的使用限制，详见 [使用限制](/product/limitation.html)；
 - 了解群成员角色，详见 [群组概述](group_overview.html#群组成员角色)；
-- 了解群组和群成员的数量限制，详见 [IM 套餐包功能对比](/product/product_package_feature.html)。
+- 了解群组和群成员的数量限制，详见 [IM 套餐包功能详情](/product/product_package_feature.html)。
 
 ## 实现方法
 
@@ -151,7 +151,7 @@ ChatClient.getInstance().groupManager()?.fetchPublicGroupsFromServer(pageSize, c
 
 #### 群成员主动退出群组
 
-群成员可以调用 `leaveGroup` 方法退出群组。其他成员收到 `GroupChangeListener#onMemberExited` 回调。
+群成员可以调用 `leaveGroup` 方法退出群组。其他成员收到 `GroupChangeListener#onMembersExited` 回调。
 
 退出群组后，该用户将不再收到群消息。群主不能调用该接口退出群组，只能调用 `destroyGroup` 解散群组。
 
@@ -165,7 +165,7 @@ ChatClient.getInstance().groupManager()?.leaveGroup(groupId).then(() => {
 
 #### 群成员被移出群组
 
-仅群主和群管理员可以调用 `removeUsersFromGroup` 方法将单个或多个成员移出群组。被踢出群组后，被踢成员将会收到群组事件回调 `GroupChangeListener#onUserRemoved`，其他成员将会收到回调 `GroupChangeListener#onMemberExited`。被移出群组后，用户还可以再次加入群组。
+仅群主和群管理员可以调用 `removeUsersFromGroup` 方法将单个或多个成员移出群组。被踢出群组后，被踢成员将会收到群组事件回调 `GroupChangeListener#onUserRemoved`，其他成员将会收到回调 `GroupChangeListener#onMembersExited`。被移出群组后，用户还可以再次加入群组。
 
 - 移出群成员，示例代码如下：
 

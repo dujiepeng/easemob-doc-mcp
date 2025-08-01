@@ -2,6 +2,18 @@
 
 <Toc />
 
+## 版本 V4.15.1 Dev 2025-6-23（开发版）
+
+### 新增特性 
+
+1. [根据关键字从本地数据库中获取单个会话的消息](message_retrieve.html#根据关键字获取本地会话中的消息)，SDK 返回会话 ID 及消息 ID 列表。
+2. [根据消息 ID 从本地数据库获取单个或多个消息](message_retrieve.html#根据消息-id-获取单个或多个本地消息)。
+
+### 修复
+
+1. 修复当修改文本和自定义消息之外的消息时，`EMChatManagerDelegate#onMessageContentChanged` 回调中不返回修改的信息的问题。
+2. 修复 [拉取漫游消息](message_retrieve.html#从服务器获取指定会话的消息) 时，设置为不保存消息时（`EMFetchServerMessagesOption#isSave` 设置为 `false`）时，也会生成新的本地会话的问题。
+
 ## 版本 V4.15.0 Dev 2025-5-21（开发版）
 
 ### 新增特性
@@ -13,17 +25,18 @@
 ### 优化
 
 - 修改 Token 即将过期事件 [tokenWillExpire](connection.html#监听连接状态) 的触发时机。SDK 会在 Token 有效期达到 80% 时（之前版本为 50% ）回调即将过期通知。
-- [IM Demo] 跑通即时通讯 IM Demo 时，无需部署 App Server。Demo 跑通详情，请参见 [Demo 跑通文档](demo.html#快速跑通-demo)。
+- [IM Demo] 跑通即时通讯 IM Demo 时，无需部署 App Server。Demo 跑通详情，请参见 [Demo 跑通文档](demo.html#快速跑通-demo-源码)。
 
 ## 版本 V4.14.0 Dev 2025-4-21（开发版）
 
 ### 新增特性
 
-- 支持 [GIF 图片消息](message_send_receive.html#发送和接收-gif-图片消息)。
+- 支持 [发送](message_send.html#发送-gif-图片消息) 和[接收 GIF 图片消息](message_receive.html#接收-gif-图片消息)。
 - 支持 [群组头像功能](group_attributes.html#管理群组头像)。
-- 支持 [消息附件鉴权功能](message_send_receive.html#发送和接收附件消息)。该功能需要联系商务开通，开通后必须调用 SDK 的 API 才能下载消息附件。
+- 支持 [消息附件鉴权功能](message_receive.html#接收附件消息)。该功能需要联系商务开通，开通后必须调用 SDK 的 API 才能下载消息附件。
 - 支持拉取漫游消息时，只 [拉取指定的群成员发送的消息](message_retrieve.html#从服务器获取指定群成员发送的消息)。
 - 支持加载本地会话消息时，[只加载指定群成员发送的消息](message_retrieve.html#从本地获取指定群成员发送的消息)。
+- 支持 [获取群成员列表](group_manage.html#获取群成员列表) 时包括成员角色和入群时间。
 
 ### 优化
 
@@ -119,7 +132,7 @@
   
 ### 优化
  
-- [IM SDK] [发送前回调](/document/server-side/callback_presending.html)时修改的[消息扩展字段](/document/android/message_send_receive.html#使用消息扩展字段)，会同步到发送方。
+- [IM SDK] [发送前回调](/document/server-side/callback_presending.html)时修改的[消息扩展字段](/document/android/message_extension.html)，会同步到发送方。
 - [IM SDK] 调用[删除服务端会话 API](conversation_delete.html#单向删除服务端会话及其历史消息)，成功后会删除本地会话。之前版本调用该接口可设置删除会话的本地消息，不能删除本地会话。
 - [IM SDK] 群组和聊天室操作的默认错误码提示由 `EMErrorGroupMembersFull`（604）和 `EMErrorChatroomMembersFull`（704）调整为 `EMErrorGroupPermissionDenied`（603）和 `EMErrorChatroomPermissionDeniedD`（703）。例如，群组普通成员设置群组管理员时，由于缺乏权限，会提示 603 错误。
 
@@ -174,7 +187,7 @@
 
 ### 优化
 
-- [IM SDK] 设置和获取用户属性的接口，包括[设置当前用户的属性](userprofile.html#设置当前用户的属性)、[获取单个或多个用户的用户属性](userprofile.html#获取用户属性)和[获取指定用户的指定用户属性](userprofile.html#获取指定用户的指定用户属性)，超过调用频率限制时，会上报错误码 4 `EMErrorExceedServiceLimit`。
+- [IM SDK] 设置和获取用户属性的接口，包括[设置当前用户的属性](userprofile.html#设置当前用户的所有属性)、[获取单个或多个用户的用户属性](userprofile.html#获取用户的所有属性)和[获取指定用户的指定用户属性](userprofile.html#获取用户的指定属性)，超过调用频率限制时，会上报错误码 4 `EMErrorExceedServiceLimit`。
 
 ### 修复
 
@@ -277,8 +290,8 @@
 
 - [IM SDK] 新增 [EMChatManager#deleteAllMessagesAndConversations:completion:](message_delete.html#清空聊天记录) 方法，用于清空当前用户的聊天记录，包括消息和会话，同时可以选择是否清除服务端的聊天记录。
 - [IM SDK] 新增 [EMChatManager#loadMessagesWithKeyword:timestamp:count:fromUser:searchDirection:scope:completion:](message_search.html#根据搜索范围搜索所有会话中的消息) 和[EMConversation#loadMessagesWithKeyword:timestamp:count:fromUser:searchDirection:scope:completion:](message_search.html#根据搜索范围搜索当前会话中的消息)，可以在根据关键字搜索消息时，选择搜索范围，如只搜索消息内容、只搜索消息扩展信息以及同时搜索消息内容以及扩展信息。
-- [IM SDK] 新增 [EMOptions#useReplacedMessageContents](message_send_receive.html#发送消息前的内容审核) 开关。开启后，发送消息时如果被内容审核进行了内容替换，发送方可以获取替换后的内容。
-- [IM SDK] 新增 [EMOptions#includeSendMessageInMessageListener](message_send_receive.html#发送和接收文本消息) 开关。开启后，在 `messagesDidReceive` 回调里增加发送成功的消息。
+- [IM SDK] 新增 [EMOptions#useReplacedMessageContents](message_send.html#发送消息前的内容审核) 开关。开启后，发送消息时如果被内容审核进行了内容替换，发送方可以获取替换后的内容。
+- [IM SDK] 新增 [EMOptions#includeSendMessageInMessageListener](message_send.html#发送文本消息) 开关。开启后，在 `messagesDidReceive` 回调里增加发送成功的消息。
 - [IM SDK] 新增 [EMOptions#regardImportMessagesAsRead](message_retrieve.html#从服务器获取指定会话的消息) 开关。开启后，[利用服务端接口](/document/server-side/message_import.html)导入的消息，客户端上通过[漫游拉取](message_retrieve.html#从服务器获取指定会话的消息)到后，这些消息为已读状态，会话中未读取的消息数量 `EMConversation#unreadMessagesCount` 不发生变化。若该开关为关闭状态，`EMConversation#unreadMessagesCount` 的数量会增加。
 
 ### 优化
@@ -346,7 +359,7 @@
 
 ### 新增特性
 
-- [IM SDK] 新增[合并转发消息功能](message_send_receive.html#发送和接收合并消息)：
+- [IM SDK] 新增 [发送](message_send_.html#发送合并消息)和 [接收合并转发消息](message_receive.html#接收合并消息) 功能：
     - 新增合并消息类型 `EMMessageBodyTypeCombine`；
     - 新增消息体类 `EMCombineMessageBody` ；
     - 新增 `EMChatManager#downloadAndParseCombineMessage` 方法，用于下载并解析合并消息。
@@ -387,7 +400,7 @@
     - 新增 `IEMChatManager#pinConversation:completionBlock:` 方法，实现[置顶或取消置顶服务器会话](conversation_pin.html#置顶-取消置顶会话)：
     - 新增 `IEMChatManager#getPinnedConversationsFromServerWithCursor:pageSize:completion` 方法，实现[获取置顶的服务器会话](conversation_pin.html#获取服务端的置顶会话列表)。
 - [IM SDK] 新增 `IEMChatManager#getAllConversations:` 方法，实现[从本地获取排序后的会话列表](conversation_list.html#获取本地会话)。
-- [IM SDK] 新增在群组或聊天室中[发送定向消息](message_send_receive.html#发送和接收定向消息)功能。
+- [IM SDK] 新增在群组或聊天室中 [发送定向消息](message_target.html) 功能。
 
 ### 优化
 
@@ -454,7 +467,7 @@
 
 ### 新增特性
 
-- [IM SDK] 新增[聊天室消息优先级](message_send_receive.html#聊天室消息优先级与消息丢弃逻辑)。
+- [IM SDK] 新增 [聊天室消息优先级](message_send.html#聊天室消息优先级与消息丢弃逻辑)。
 - [IM SDK] 群组信息更新后的 `EMGroupManagerDelegate#groupSpecificationDidUpdate` 回调中添加更新后的群组信息。
 
 ### 优化

@@ -16,7 +16,7 @@
 - `ChatManager#fetchHistoryMessages`：根据 `searchOptions.from` 字段从服务器获取群组中指定成员（而非全部成员）发送的消息；
 - `Conversation#searchMessagesByKeywords`：从本地获取群组中指定成员（而非全部成员）发送的消息；
 - `Conversation#getAllMessages`：从本地读取指定会话的消息；
-- `ChatManager#getMessage`：根据消息 ID 获取本地消息；
+- `ChatManager#getMessage`：根据消息 ID 获取单个本地消息；
 - `Conversation#getMsgCountInRange`：获取本地数据库中单个会话在某个时间段内的全部消息数。
 
 ## 前提条件
@@ -43,8 +43,8 @@
 
 :::tip
 1. **默认可获取单聊和群组聊天的历史消息。若要获取聊天室的历史消息，需联系环信商务。**
-2. 对于单聊消息，自 1.5.0 版本开始，从服务器拉取历史消息时会读取服务端的消息已读和送达状态。该功能默认关闭，如果需要，请联系环信商务开通。
-3. 历史消息在服务器上的存储时间与产品的套餐包相关，详见  [IM 套餐包功能对比](/product/product_package_feature.html)。
+2. 自 1.5.0 版本开始，获取单聊历史消息时会读取服务端保存的消息送达状态和已读状态。该功能默认关闭，如果需要，请联系环信商务开通。
+3. 历史消息在服务器上的存储时间与产品的套餐包相关，详见 [IM 套餐包功能详情](/product/product_package_feature.html)。
 :::
 
 ```typescript
@@ -108,7 +108,7 @@ List<EMMessage> messages = conversation.getAllMessages();
 List<EMMessage> messages = conversation.loadMoreMsgFromDB(startMsgId, pagesize);
 ```
 
-### 根据消息 ID 获取本地消息
+### 根据消息 ID 获取单个本地消息
 
 你可以调用 `getMessage` 方法根据消息 ID 获取本地存储的指定消息。如果消息不存在会返回空值。
 

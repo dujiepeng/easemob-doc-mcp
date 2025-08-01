@@ -51,7 +51,11 @@
 
 ## 设置群成员自定义属性
 
+#### 功能说明
+
 设置群成员的自定义属性（key-value），例如在群组中的昵称和头像等。
+
+**调用频率上限**：100 次/秒/App Key   
 
 #### HTTP 请求
 
@@ -97,7 +101,7 @@ PUT https://{host}/{org_name}/{app_name}/metadata/chatgroup/{group_id}/user/{use
 
 ```shell
 # 将 <YourAppToken> 替换为你在服务端生成的 App Token
-curl -L -X PUT 'https://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/user/XXXX' \
+curl -X PUT 'https://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/user/XXXX' \
 -H 'Content-Type: application/json' \
 -H 'Accept: application/json' \
 -H 'Authorization: Bearer <YourAppToken>' \
@@ -134,7 +138,11 @@ curl -L -X PUT 'https://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/user/XXXX' \
 
 ## 批量设置群成员自定义属性
 
-批量设置群成员的自定义属性（key-value），例如，在群组中的昵称和头像等。每次请求最多可为 20 个群成员设置多个属性，而且可对不同群成员设置不同属性。传入相同用户 ID 时，若其属性名称不同，则添加，相同则更新。
+#### 功能说明
+
+- 批量设置群成员的自定义属性（key-value），例如，在群组中的昵称和头像等。
+- 每次请求最多可为 20 个群成员设置多个属性，而且可对不同群成员设置不同属性。
+- 传入相同用户 ID 时，若其属性名称不同，则添加，相同则更新。
 
 **调用频率上限**：100 次/秒/App Key
 
@@ -185,7 +193,7 @@ PUT https://{host}/{org_name}/{app_name}/metadata/chatgroup/{group_id}/users/bat
 
 ```shell
 # 将 <YourAppToken> 替换为你在服务端生成的 App Token
-curl -L -X PUT 'http://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/users/batch' \
+curl -X PUT 'http://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/users/batch' \
 -H 'Content-Type: application/json' \
 -H 'Accept: application/json' \
 -H 'Authorization: Bearer <YourAppToken>' \
@@ -253,7 +261,11 @@ curl -L -X PUT 'http://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/users/batch' \
 
 ## 获取单个群成员的所有自定义属性
 
+#### 功能说明
+
 获取单个群成员的所有自定义属性。
+
+**调用频率上限**：100 次/秒/App Key
 
 #### HTTP 请求
 
@@ -293,7 +305,7 @@ GET https://{host}/{org_name}/{app_name}/metadata/chatgroup/{group_id}/user/{use
 
 ```shell
 # 将 <YourAppToken> 替换为你在服务端生成的 App Token
-curl -L -X GET 'https://a1-hsb.easemob.com/easemob-demo/testy/metadata/chatgroup/207059303858177/user/test2' \
+curl -X GET 'https://a1-hsb.easemob.com/easemob-demo/testy/metadata/chatgroup/207059303858177/user/test2' \
 -H 'Content-Type: application/json' \
 -H 'Accept: application/json'
 -H 'Authorization: Bearer YWMtozZwfsFFEe2oQTE6aob5eQAAAAAAAAAAAAAAAAAAAAExCXvf5bRGAJBgXNYFJVQ9AQMAAAGG2MUClwBPGgDsI1GYg1QtapTEdGyrm29Eu6L8qx60lDZ9TJRDOQjEsw' \
@@ -325,7 +337,12 @@ curl -L -X GET 'https://a1-hsb.easemob.com/easemob-demo/testy/metadata/chatgroup
 
 ## 根据属性 key 获取多个群成员的自定义属性
 
-根据指定的属性 key 获取多个群成员的自定义属性。每次最多可获取 10 个群成员的自定义属性。
+#### 功能说明
+
+- 根据指定的属性 key 获取多个群成员的自定义属性。
+- 每次最多可获取 10 个群成员的自定义属性。
+
+**调用频率上限**：100 次/秒/App Key
 
 #### HTTP 请求
 
@@ -372,7 +389,7 @@ POST https://{host}/{org_name}/{app_name}/metadata/chatgroup/{group_id}/get
 
 ```shell
 # 将 <YourAppToken> 替换为你在服务端生成的 App Token
-curl -L -X POST 'https://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/get'\
+curl -X POST 'https://XXXX/XXXX/XXXX/metadata/chatgroup/XXXX/get'\
 -H'Content-Type: application/json'\
 -H'Accept: application/json'\
 -H'Authorization: Bearer <YourAppToken>'\

@@ -1,6 +1,10 @@
 # 单向删除会话
 
-你可以从服务器中单向删除会话，并且设置是否删除该会话在服务端的漫游消息。删除会话后，该用户将从服务器获取不到该会话。该会话的其他参与聊天用户仍然可以从服务器获取会话内容。
+## 功能说明
+
+- 你可以从服务器中单向删除会话，并且设置是否删除该会话在服务端的漫游消息。
+- 删除会话后，该用户将从服务器获取不到该会话。该会话的其他参与聊天用户仍然可以从服务器获取会话内容。
+- 该接口目前支持单聊会话和群组会话。
 
 ## 前提条件
 
@@ -75,7 +79,7 @@ DELETE https://{host}/{org_name}/{app_name}/users/{username}/user_channel
 ```shell
 # 将 <YourAppToken> 替换为你在服务端生成的 App Token
 
-curl -L -X DELETE 'https://XXXX/XXXX/XXXX/users/u1/user_channel' \
+curl -X DELETE 'https://XXXX/XXXX/XXXX/users/u1/user_channel' \
 -H 'Authorization: Bearer <YourAppToken>'  \
 -H 'Content-Type: application/json'  \
 -H 'Accept: application/json'  \
