@@ -80,16 +80,6 @@ if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         echo -e "${RED}[ERROR]${NC} 无效的端口号: $PORT (必须是1-65535之间的数字)"
         exit 1
     fi
-    
-    # 检查端口是否被占用
-    if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
-        echo -e "${YELLOW}[WARNING]${NC} 端口 $PORT 已被占用"
-        read -p "是否继续？(y/N): " -n 1 -r
-        echo
-        if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-            exit 1
-        fi
-    fi
 fi
 
 # 配置变量
@@ -195,6 +185,18 @@ check_system() {
     
     PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
     print_info "Python版本: $PYTHON_VERSION"
+    
+    # 检查端口是否被占用（仅对http和sse传输）
+    if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+        if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+            print_warning "端口 $PORT 已被占用"
+            read -p "是否继续？(y/N): " -n 1 -r
+            echo
+            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                exit 1
+            fi
+        fi
+    fi
 }
 
 # 创建项目目录
