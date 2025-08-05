@@ -23,7 +23,7 @@ DEFAULT_PATH="/mcp/"
 TRANSPORT=$DEFAULT_TRANSPORT
 HOST=$DEFAULT_HOST
 PORT=$DEFAULT_PORT
-PATH=$DEFAULT_PATH
+MCP_PATH=$DEFAULT_PATH
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --path)
-            PATH="$2"
+            MCP_PATH="$2"
             shift 2
             ;;
         --help|-h)
@@ -189,7 +189,7 @@ check_system() {
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         print_info "主机: $HOST"
         print_info "端口: $PORT"
-        print_info "路径: $PATH"
+        print_info "路径: $MCP_PATH"
     fi
     
     PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
@@ -307,7 +307,7 @@ create_service() {
     # 构建启动命令
     START_CMD="$VENV_DIR/bin/python src/server.py --transport $TRANSPORT"
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
-        START_CMD="$START_CMD --host $HOST --port $PORT --path $PATH"
+        START_CMD="$START_CMD --host $HOST --port $PORT --path $MCP_PATH"
     fi
     
     # 创建服务文件
@@ -367,13 +367,13 @@ test_service() {
     
     # 仅对HTTP传输进行测试
     if [[ "$TRANSPORT" == "http" ]]; then
-        if curl -s http://$HOST:$PORT$PATH > /dev/null; then
+        if curl -s http://$HOST:$PORT$MCP_PATH > /dev/null; then
             print_success "服务测试通过！"
         else
             print_warning "服务测试失败，但服务可能仍在启动中"
         fi
     elif [[ "$TRANSPORT" == "sse" ]]; then
-        if curl -s http://$HOST:$PORT$PATH > /dev/null; then
+        if curl -s http://$HOST:$PORT$MCP_PATH > /dev/null; then
             print_success "SSE服务测试通过！"
         else
             print_warning "SSE服务测试失败，但服务可能仍在启动中"
@@ -396,7 +396,7 @@ show_completion() {
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         echo "  主机: $HOST"
         echo "  端口: $PORT"
-        echo "  路径: $PATH"
+        echo "  路径: $MCP_PATH"
     fi
     echo
     echo "服务管理:"
@@ -409,26 +409,26 @@ show_completion() {
     if [[ "$TRANSPORT" == "http" ]]; then
         echo "服务地址:"
         echo "  HTTP: http://$(hostname -I | awk '{print $1}'):$PORT"
-        echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT$PATH"
+        echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH"
         echo
         echo "Cursor配置:"
         echo "  在Cursor的MCP配置中添加:"
         echo "  {"
         echo "    \"easemob-doc-mcp\": {"
         echo "      \"transport\": \"http\","
-        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$PATH\""
+        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH\""
         echo "    }"
         echo "  }"
     elif [[ "$TRANSPORT" == "sse" ]]; then
         echo "服务地址:"
-        echo "  SSE: http://$(hostname -I | awk '{print $1}'):$PORT$PATH"
+        echo "  SSE: http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH"
         echo
         echo "Cursor配置:"
         echo "  在Cursor的MCP配置中添加:"
         echo "  {"
         echo "    \"easemob-doc-mcp\": {"
         echo "      \"transport\": \"sse\","
-        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$PATH\""
+        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH\""
         echo "    }"
         echo "  }"
     else
