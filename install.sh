@@ -240,7 +240,7 @@ setup_venv() {
     cd $PROJECT_DIR
     
     # 检查并安装python3-venv
-    if ! dpkg -l | grep -q python3-venv; then
+    if ! dpkg -s python3-venv >/dev/null 2>&1; then
         print_info "安装python3-venv..."
         apt update
         apt install -y python3-venv
