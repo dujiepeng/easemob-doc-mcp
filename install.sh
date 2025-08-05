@@ -92,12 +92,18 @@ VENV_DIR="$PROJECT_DIR/venv"
 # 检查并安装基本工具（在任何函数调用之前）
 echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
 
+# 修复PATH环境变量（如果被错误设置）
+if [[ "$PATH" == "/mcp/" ]] || [[ "$PATH" == "$MCP_PATH" ]]; then
+    echo -e "${YELLOW}[WARNING]${NC} 检测到PATH环境变量被错误设置，正在修复..."
+    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+    echo -e "${GREEN}[INFO]${NC} PATH环境变量已修复"
+fi
+
 # 调试信息
 echo -e "${BLUE}[DEBUG]${NC} 当前PATH: $PATH"
 echo -e "${BLUE}[DEBUG]${NC} 当前用户: $(whoami)"
 echo -e "${BLUE}[DEBUG]${NC} 当前目录: $(pwd)"
 echo -e "${BLUE}[DEBUG]${NC} MCP_PATH变量值: $MCP_PATH"
-echo -e "${BLUE}[DEBUG]${NC} 检查是否有PATH变量被设置: $(set | grep '^PATH=' || echo '没有找到PATH变量')"
 
 # 检查apt是否可用
 echo -e "${BLUE}[DEBUG]${NC} 检查apt命令..."
