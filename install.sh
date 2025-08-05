@@ -93,7 +93,7 @@ VENV_DIR="$PROJECT_DIR/venv"
 echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
 
 # 检查apt是否可用
-if ! command -v apt &> /dev/null; then
+if ! apt --version >/dev/null 2>&1; then
     echo -e "${RED}[ERROR]${NC} apt包管理器不可用，请确保系统为Ubuntu/Debian"
     exit 1
 fi
