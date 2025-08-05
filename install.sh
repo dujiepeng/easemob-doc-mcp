@@ -96,6 +96,8 @@ echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
 echo -e "${BLUE}[DEBUG]${NC} 当前PATH: $PATH"
 echo -e "${BLUE}[DEBUG]${NC} 当前用户: $(whoami)"
 echo -e "${BLUE}[DEBUG]${NC} 当前目录: $(pwd)"
+echo -e "${BLUE}[DEBUG]${NC} MCP_PATH变量值: $MCP_PATH"
+echo -e "${BLUE}[DEBUG]${NC} 检查是否有PATH变量被设置: $(set | grep '^PATH=' || echo '没有找到PATH变量')"
 
 # 检查apt是否可用
 echo -e "${BLUE}[DEBUG]${NC} 检查apt命令..."
