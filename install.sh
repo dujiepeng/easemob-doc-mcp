@@ -89,6 +89,49 @@ GITHUB_REPO="https://github.com/dujiepeng/easemob-doc-mcp.git"
 SERVICE_USER="www-data"
 VENV_DIR="$PROJECT_DIR/venv"
 
+# 检查并安装基本工具（在任何函数调用之前）
+echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
+
+# 检查apt是否可用
+if ! command -v apt &> /dev/null; then
+    echo -e "${RED}[ERROR]${NC} apt包管理器不可用，请确保系统为Ubuntu/Debian"
+    exit 1
+fi
+
+# 检查并安装基本工具包
+MISSING_TOOLS=()
+
+if ! command -v grep &> /dev/null; then
+    MISSING_TOOLS+=("grep")
+fi
+
+if ! command -v sudo &> /dev/null; then
+    MISSING_TOOLS+=("sudo")
+fi
+
+if ! command -v netstat &> /dev/null; then
+    MISSING_TOOLS+=("net-tools")
+fi
+
+if ! command -v curl &> /dev/null; then
+    MISSING_TOOLS+=("curl")
+fi
+
+if ! command -v git &> /dev/null; then
+    MISSING_TOOLS+=("git")
+fi
+
+if ! command -v python3 &> /dev/null; then
+    MISSING_TOOLS+=("python3" "python3-pip" "python3-venv")
+fi
+
+# 安装缺失的工具
+if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
+    echo -e "${BLUE}[INFO]${NC} 安装缺失的工具: ${MISSING_TOOLS[*]}..."
+    apt update
+    apt install -y "${MISSING_TOOLS[@]}"
+fi
+
 # 打印带颜色的消息
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -121,49 +164,6 @@ check_root() {
 # 检查系统要求
 check_system() {
     print_info "检查系统要求..."
-    
-    # 检查并安装基本工具
-    print_info "检查基本工具..."
-    
-    # 检查apt是否可用
-    if ! command -v apt &> /dev/null; then
-        print_error "apt包管理器不可用，请确保系统为Ubuntu/Debian"
-        exit 1
-    fi
-    
-    # 检查并安装基本工具包
-    MISSING_TOOLS=()
-    
-    if ! command -v grep &> /dev/null; then
-        MISSING_TOOLS+=("grep")
-    fi
-    
-    if ! command -v sudo &> /dev/null; then
-        MISSING_TOOLS+=("sudo")
-    fi
-    
-    if ! command -v netstat &> /dev/null; then
-        MISSING_TOOLS+=("net-tools")
-    fi
-    
-    if ! command -v curl &> /dev/null; then
-        MISSING_TOOLS+=("curl")
-    fi
-    
-    if ! command -v git &> /dev/null; then
-        MISSING_TOOLS+=("git")
-    fi
-    
-    if ! command -v python3 &> /dev/null; then
-        MISSING_TOOLS+=("python3" "python3-pip" "python3-venv")
-    fi
-    
-    # 安装缺失的工具
-    if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
-        print_info "安装缺失的工具: ${MISSING_TOOLS[*]}..."
-        apt update
-        apt install -y "${MISSING_TOOLS[@]}"
-    fi
     
     # 检查操作系统
     if [[ -f /etc/os-release ]]; then
