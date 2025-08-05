@@ -132,6 +132,49 @@ check_root() {
 check_system() {
     print_info "检查系统要求..."
     
+    # 检查并安装基本工具
+    print_info "检查基本工具..."
+    
+    # 检查apt是否可用
+    if ! command -v apt &> /dev/null; then
+        print_error "apt包管理器不可用，请确保系统为Ubuntu/Debian"
+        exit 1
+    fi
+    
+    # 检查并安装基本工具包
+    MISSING_TOOLS=()
+    
+    if ! command -v grep &> /dev/null; then
+        MISSING_TOOLS+=("grep")
+    fi
+    
+    if ! command -v sudo &> /dev/null; then
+        MISSING_TOOLS+=("sudo")
+    fi
+    
+    if ! command -v netstat &> /dev/null; then
+        MISSING_TOOLS+=("net-tools")
+    fi
+    
+    if ! command -v curl &> /dev/null; then
+        MISSING_TOOLS+=("curl")
+    fi
+    
+    if ! command -v git &> /dev/null; then
+        MISSING_TOOLS+=("git")
+    fi
+    
+    if ! command -v python3 &> /dev/null; then
+        MISSING_TOOLS+=("python3" "python3-pip" "python3-venv")
+    fi
+    
+    # 安装缺失的工具
+    if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
+        print_info "安装缺失的工具: ${MISSING_TOOLS[*]}..."
+        apt update
+        apt install -y "${MISSING_TOOLS[@]}"
+    fi
+    
     # 检查操作系统
     if [[ -f /etc/os-release ]]; then
         . /etc/os-release
@@ -150,30 +193,8 @@ check_system() {
         print_info "路径: $PATH"
     fi
     
-    # 检查Python
-    if ! command -v python3 &> /dev/null; then
-        print_error "Python3 未安装"
-        print_info "正在安装Python3..."
-        sudo apt update
-        sudo apt install -y python3 python3-pip python3-venv
-    fi
-    
     PYTHON_VERSION=$(python3 --version 2>&1 | cut -d' ' -f2)
     print_info "Python版本: $PYTHON_VERSION"
-    
-    # 检查Git
-    if ! command -v git &> /dev/null; then
-        print_info "安装Git..."
-        sudo apt update
-        sudo apt install -y git
-    fi
-    
-    # 检查curl
-    if ! command -v curl &> /dev/null; then
-        print_info "安装curl..."
-        sudo apt update
-        sudo apt install -y curl
-    fi
 }
 
 # 创建项目目录
@@ -181,8 +202,8 @@ setup_project() {
     print_info "设置项目目录..."
     
     # 创建项目目录
-    sudo mkdir -p $PROJECT_DIR
-    sudo chown $USER:$USER $PROJECT_DIR
+    mkdir -p $PROJECT_DIR
+    chown $USER:$USER $PROJECT_DIR
     
     # 如果目录已存在且有内容，询问是否覆盖
     if [[ -d "$PROJECT_DIR/src" ]]; then
@@ -219,8 +240,8 @@ setup_venv() {
     # 检查并安装python3-venv
     if ! dpkg -l | grep -q python3-venv; then
         print_info "安装python3-venv..."
-        sudo apt update
-        sudo apt install -y python3-venv
+        apt update
+        apt install -y python3-venv
     fi
     
     # 创建虚拟环境
@@ -300,9 +321,9 @@ WantedBy=multi-user.target
 EOF
     
     # 安装服务
-    sudo cp /tmp/easemob-doc-mcp.service /etc/systemd/system/
-    sudo systemctl daemon-reload
-    sudo systemctl enable easemob-doc-mcp
+    cp /tmp/easemob-doc-mcp.service /etc/systemd/system/
+    systemctl daemon-reload
+    systemctl enable easemob-doc-mcp
     
     print_success "systemd服务创建完成"
 }
@@ -311,17 +332,17 @@ EOF
 start_service() {
     print_info "启动服务..."
     
-    sudo systemctl start easemob-doc-mcp
+    systemctl start easemob-doc-mcp
     
     # 等待服务启动
     sleep 3
     
     # 检查服务状态
-    if sudo systemctl is-active --quiet easemob-doc-mcp; then
+    if systemctl is-active --quiet easemob-doc-mcp; then
         print_success "服务启动成功！"
     else
         print_error "服务启动失败"
-        sudo systemctl status easemob-doc-mcp
+        systemctl status easemob-doc-mcp
         exit 1
     fi
 }
