@@ -92,9 +92,18 @@ VENV_DIR="$PROJECT_DIR/venv"
 # 检查并安装基本工具（在任何函数调用之前）
 echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
 
+# 调试信息
+echo -e "${BLUE}[DEBUG]${NC} 当前PATH: $PATH"
+echo -e "${BLUE}[DEBUG]${NC} 当前用户: $(whoami)"
+echo -e "${BLUE}[DEBUG]${NC} 当前目录: $(pwd)"
+
 # 检查apt是否可用
-if ! apt --version >/dev/null 2>&1; then
+echo -e "${BLUE}[DEBUG]${NC} 检查apt命令..."
+if apt --version >/dev/null 2>&1; then
+    echo -e "${GREEN}[DEBUG]${NC} apt命令可用"
+else
     echo -e "${RED}[ERROR]${NC} apt包管理器不可用，请确保系统为Ubuntu/Debian"
+    echo -e "${RED}[DEBUG]${NC} apt命令检查失败"
     exit 1
 fi
 
