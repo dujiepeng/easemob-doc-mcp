@@ -73,7 +73,12 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
         
         # 检查文件是否存在
         if not os.path.exists(fullPath):
-            return {"content": None, "error": "文档不存在"}
+            return {
+                "content": None, 
+                "docPath": doc_path,
+                "matches": [],
+                "error": "文档不存在"
+            }
         
         # 读取文件内容
         with open(fullPath, 'r', encoding='utf-8') as f:
@@ -84,7 +89,8 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
             return {
                 "content": content,
                 "docPath": doc_path,
-                "matches": []
+                "matches": [],
+                "error": None
             }
         
         # 搜索关键字
@@ -107,11 +113,17 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
         return {
             "content": content,
             "docPath": doc_path,
-            "matches": matches
+            "matches": matches,
+            "error": None
         }
     except Exception as e:
         print(f"获取文档内容错误: {str(e)}")
-        return {"content": None, "error": "获取文档内容失败"}
+        return {
+            "content": None, 
+            "docPath": doc_path,
+            "matches": [],
+            "error": f"获取文档内容失败: {str(e)}"
+        }
 
 def main():
     """主函数，启动MCP服务器"""
