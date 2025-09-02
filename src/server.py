@@ -41,9 +41,13 @@ async def search_platform_docs(platform: str = None, **kwargs) -> Dict[str, Any]
     }
     """
     # 处理不同的输入格式
-    if platform is None and kwargs:
-        # 如果没有直接提供platform参数，但有其他参数，尝试从kwargs中获取
-        platform = kwargs.get("platform", "")
+    if platform is None:
+        if kwargs:
+            # 如果没有直接提供platform参数，但有其他参数，尝试从kwargs中获取
+            platform = kwargs.get("platform", "")
+        else:
+            # 如果没有任何参数，设置默认值
+            platform = ""
     try:
         # 确保平台名是小写的，以便统一比较
         lowercasePlatform = platform.lower()
@@ -119,11 +123,17 @@ async def get_document_content(doc_path: str = None, keyword: str = "", **kwargs
     }
     """
     # 处理不同的输入格式
-    if doc_path is None and kwargs:
-        # 如果没有直接提供doc_path参数，但有其他参数，尝试从kwargs中获取
-        doc_path = kwargs.get("doc_path", "")
-        if "keyword" in kwargs and not keyword:
-            keyword = kwargs.get("keyword", "")
+    if doc_path is None:
+        if kwargs:
+            # 如果没有直接提供doc_path参数，但有其他参数，尝试从kwargs中获取
+            doc_path = kwargs.get("doc_path", "")
+        else:
+            # 如果没有任何参数，设置默认值
+            doc_path = ""
+    
+    # 处理关键字参数
+    if "keyword" in kwargs and not keyword:
+        keyword = kwargs.get("keyword", "")
     try:
         fullPath = os.path.join(DOC_ROOT, doc_path)
         
