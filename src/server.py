@@ -17,10 +17,17 @@ async def search_platform_docs(platform: str) -> List[str]:
     搜索特定平台的文档目录
     
     参数:
-    - platform: 平台名称，如 'android', 'ios', 'web' 等
+    - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side' 等。
+              支持部分匹配，例如输入 'and' 会匹配 'android'。
     
     返回:
-    - 匹配的文档路径列表
+    [
+        "android/quickstart.md",  # 文档的相对路径列表
+        "android/integration.md",
+        ...
+    ]
+    
+    如果没有找到匹配的平台或发生错误，则返回空列表 []
     """
     try:
         # 确保平台名是小写的，以便统一比较
@@ -62,11 +69,23 @@ async def get_document_content(doc_path: str, keyword: str = "") -> Dict[str, An
     获取文档内容，并根据关键字搜索相关内容
     
     参数:
-    - doc_path: 文档相对路径
-    - keyword: 搜索关键字（可选）
+    - doc_path: 文档相对路径，例如 "android/quickstart.md"，必须提供
+    - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
     
     返回:
-    - 包含文档内容和匹配片段的字典
+    {
+        "content": str or None,  # 文档的完整内容，如果文档不存在或发生错误则为None
+        "docPath": str,          # 请求的文档路径
+        "matches": [             # 匹配结果列表，如果没有提供关键字或没有匹配则为空列表
+            {
+                "lineNumber": int,  # 匹配行的行号（从1开始）
+                "context": str,     # 匹配行的上下文（包括前后各2行）
+                "line": str         # 匹配的具体行内容
+            },
+            ...
+        ],
+        "error": str or None     # 错误信息，如果成功则为None
+    }
     """
     try:
         fullPath = os.path.join(DOC_ROOT, doc_path)
