@@ -12,7 +12,7 @@ DOC_ROOT = Path(__file__).parent.parent / "document"
 
 # 定义搜索文档的函数
 @mcp.tool()
-async def search_platform_docs(platform: str) -> List[str]:
+async def search_platform_docs(platform: str) -> Dict[str, Any]:
     """
     搜索特定平台的文档目录
     
@@ -21,13 +21,24 @@ async def search_platform_docs(platform: str) -> List[str]:
               支持部分匹配，例如输入 'and' 会匹配 'android'。
     
     返回:
-    [
-        "android/quickstart.md",  # 文档的相对路径列表
-        "android/integration.md",
-        ...
-    ]
+    {
+        "documents": [            # 文档路径列表
+            "android/quickstart.md",
+            "android/integration.md",
+            ...
+        ],
+        "platform": "android",    # 匹配的平台名称
+        "count": 42,             # 找到的文档数量
+        "error": null            # 错误信息，成功时为null
+    }
     
-    如果没有找到匹配的平台或发生错误，则返回空列表 []
+    如果没有找到匹配的平台或发生错误，则返回:
+    {
+        "documents": [],
+        "platform": "输入的平台名",
+        "count": 0,
+        "error": "错误信息或未找到匹配平台"
+    }
     """
     try:
         # 确保平台名是小写的，以便统一比较
@@ -40,7 +51,12 @@ async def search_platform_docs(platform: str) -> List[str]:
         matchedPlatforms = [d for d in dirs if lowercasePlatform in d.lower()]
         
         if not matchedPlatforms:
-            return []
+            return {
+                "documents": [],
+                "platform": platform,
+                "count": 0,
+                "error": f"未找到匹配平台: {platform}"
+            }
         
         # 收集所有匹配平台的文档
         results = []
@@ -57,10 +73,21 @@ async def search_platform_docs(platform: str) -> List[str]:
                         relPath = os.path.relpath(fullPath, DOC_ROOT)
                         results.append(relPath)
         
-        return results
+        return {
+            "documents": results,
+            "platform": matchedPlatforms[0] if len(matchedPlatforms) == 1 else platform,
+            "count": len(results),
+            "error": None
+        }
     except Exception as e:
-        print(f"搜索文档错误: {str(e)}")
-        return []
+        error_msg = f"搜索文档错误: {str(e)}"
+        print(error_msg)
+        return {
+            "documents": [],
+            "platform": platform,
+            "count": 0,
+            "error": error_msg
+        }
 
 # 定义获取文档内容的函数
 @mcp.tool()
