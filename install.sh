@@ -446,6 +446,21 @@ show_completion() {
     print_success "部署完成！服务已自动启动并设置为开机自启。"
 }
 
+# 拉取文档文件
+fetch_documents() {
+    print_info "拉取最新文档文件..."
+    
+    cd $PROJECT_DIR
+    
+    # 确保update_docs.sh有执行权限
+    chmod +x $PROJECT_DIR/update_docs.sh
+    
+    # 执行文档更新脚本
+    $PROJECT_DIR/update_docs.sh
+    
+    print_success "文档文件拉取完成"
+}
+
 # 主函数
 main() {
     echo -e "${GREEN}"
@@ -459,6 +474,7 @@ main() {
     setup_project
     setup_venv
     install_dependencies
+    fetch_documents  # 添加拉取文档步骤
     create_service
     start_service
     test_service

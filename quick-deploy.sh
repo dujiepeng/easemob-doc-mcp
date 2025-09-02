@@ -36,8 +36,13 @@ source venv/bin/activate
 pip install --upgrade pip
 pip install -r requirements.txt
 
-# 7. 测试运行
-echo "7. 测试运行..."
+# 7. 拉取最新文档
+echo "7. 拉取最新文档文件..."
+chmod +x update_docs.sh
+./update_docs.sh
+
+# 8. 测试运行
+echo "8. 测试运行..."
 python src/server.py &
 SERVER_PID=$!
 
