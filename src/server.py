@@ -21,6 +21,7 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
     参数:
     - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等。
               支持部分匹配，例如输入 'and' 会匹配 'android'。
+              支持常用词语映射：'小程序' -> 'applet', '鸿蒙' -> 'harmonyos', 'rn' -> 'react-native', 'rest' -> 'server-side'
     
     返回:
     {
@@ -43,8 +44,22 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
     }
     """
     try:
+        # 平台名称映射字典
+        platform_mapping = {
+            "小程序": "applet",
+            "鸿蒙": "harmonyos",
+            "rn": "react-native",
+            "rest": "server-side"
+        }
+        
         # 确保平台名是小写的，以便统一比较
         lowercasePlatform = platform.lower()
+        
+        # 检查是否需要映射
+        for key, value in platform_mapping.items():
+            if key.lower() in lowercasePlatform:
+                lowercasePlatform = value
+                break
         
         results = []
         matchedPlatforms = []
