@@ -12,7 +12,7 @@ DOC_ROOT = Path(__file__).parent.parent / "document"
 
 # 定义搜索文档的函数
 @mcp.tool()
-async def search_platform_docs(platform: str = None, **kwargs) -> Dict[str, Any]:
+async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
     """
     搜索特定平台的文档目录
     
@@ -40,14 +40,6 @@ async def search_platform_docs(platform: str = None, **kwargs) -> Dict[str, Any]
         "error": "错误信息或未找到匹配平台"
     }
     """
-    # 处理不同的输入格式
-    if platform is None:
-        if kwargs:
-            # 如果没有直接提供platform参数，但有其他参数，尝试从kwargs中获取
-            platform = kwargs.get("platform", "")
-        else:
-            # 如果没有任何参数，设置默认值
-            platform = ""
     try:
         # 确保平台名是小写的，以便统一比较
         lowercasePlatform = platform.lower()
@@ -99,7 +91,7 @@ async def search_platform_docs(platform: str = None, **kwargs) -> Dict[str, Any]
 
 # 定义获取文档内容的函数
 @mcp.tool()
-async def get_document_content(doc_path: str = None, keyword: str = "", **kwargs) -> Dict[str, Any]:
+async def get_document_content(doc_path: str = "", keyword: str = "") -> Dict[str, Any]:
     """
     获取文档内容，并根据关键字搜索相关内容
     
@@ -122,18 +114,6 @@ async def get_document_content(doc_path: str = None, keyword: str = "", **kwargs
         "error": str or None     # 错误信息，如果成功则为None
     }
     """
-    # 处理不同的输入格式
-    if doc_path is None:
-        if kwargs:
-            # 如果没有直接提供doc_path参数，但有其他参数，尝试从kwargs中获取
-            doc_path = kwargs.get("doc_path", "")
-        else:
-            # 如果没有任何参数，设置默认值
-            doc_path = ""
-    
-    # 处理关键字参数
-    if "keyword" in kwargs and not keyword:
-        keyword = kwargs.get("keyword", "")
     try:
         fullPath = os.path.join(DOC_ROOT, doc_path)
         
