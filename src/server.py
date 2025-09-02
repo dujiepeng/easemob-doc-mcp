@@ -9,6 +9,8 @@ mcp = FastMCP()
 
 # 文档根目录
 DOC_ROOT = Path(__file__).parent.parent / "document"
+# UIKit文档目录
+UIKIT_ROOT = Path(__file__).parent.parent / "uikit"
 
 # 定义搜索文档的函数
 @mcp.tool()
@@ -17,7 +19,7 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
     搜索特定平台的文档目录
     
     参数:
-    - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side' 等。
+    - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等。
               支持部分匹配，例如输入 'and' 会匹配 'android'。
     
     返回:
@@ -44,11 +46,43 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
         # 确保平台名是小写的，以便统一比较
         lowercasePlatform = platform.lower()
         
-        # 获取所有可用的平台目录
-        dirs = [d for d in os.listdir(DOC_ROOT) if os.path.isdir(os.path.join(DOC_ROOT, d))]
+        results = []
+        matchedPlatforms = []
         
-        # 过滤匹配的平台目录
-        matchedPlatforms = [d for d in dirs if lowercasePlatform in d.lower()]
+        # 检查是否匹配 uikit
+        if "uikit" in lowercasePlatform:
+            if os.path.exists(UIKIT_ROOT) and os.path.isdir(UIKIT_ROOT):
+                matchedPlatforms.append("uikit")
+                
+                # 递归获取所有UIKit的Markdown文件
+                for root, _, files in os.walk(UIKIT_ROOT):
+                    for file in files:
+                        if file.endswith('.md'):
+                            fullPath = os.path.join(root, file)
+                            # 转换为相对路径，添加uikit前缀
+                            relPath = os.path.relpath(fullPath, UIKIT_ROOT)
+                            results.append(f"uikit/{relPath}")
+        
+        # 获取所有可用的平台目录
+        if os.path.exists(DOC_ROOT) and os.path.isdir(DOC_ROOT):
+            dirs = [d for d in os.listdir(DOC_ROOT) if os.path.isdir(os.path.join(DOC_ROOT, d))]
+            
+            # 过滤匹配的平台目录
+            docMatchedPlatforms = [d for d in dirs if lowercasePlatform in d.lower()]
+            matchedPlatforms.extend(docMatchedPlatforms)
+            
+            # 收集所有匹配平台的文档
+            for platformDir in docMatchedPlatforms:
+                platformPath = os.path.join(DOC_ROOT, platformDir)
+                
+                # 递归获取所有Markdown文件
+                for root, _, files in os.walk(platformPath):
+                    for file in files:
+                        if file.endswith('.md'):
+                            fullPath = os.path.join(root, file)
+                            # 转换为相对路径
+                            relPath = os.path.relpath(fullPath, DOC_ROOT)
+                            results.append(relPath)
         
         if not matchedPlatforms:
             return {
@@ -57,21 +91,6 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
                 "count": 0,
                 "error": f"未找到匹配平台: {platform}"
             }
-        
-        # 收集所有匹配平台的文档
-        results = []
-        
-        for platformDir in matchedPlatforms:
-            platformPath = os.path.join(DOC_ROOT, platformDir)
-            
-            # 递归获取所有Markdown文件
-            for root, _, files in os.walk(platformPath):
-                for file in files:
-                    if file.endswith('.md'):
-                        fullPath = os.path.join(root, file)
-                        # 转换为相对路径
-                        relPath = os.path.relpath(fullPath, DOC_ROOT)
-                        results.append(relPath)
         
         return {
             "documents": results,
@@ -96,7 +115,7 @@ async def get_document_content(doc_path: str = "", keyword: str = "") -> Dict[st
     获取文档内容，并根据关键字搜索相关内容
     
     参数:
-    - doc_path: 文档相对路径，例如 "android/quickstart.md"，必须提供
+    - doc_path: 文档相对路径，例如 "android/quickstart.md" 或 "uikit/index.md"，必须提供
     - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
     
     返回:
@@ -115,7 +134,14 @@ async def get_document_content(doc_path: str = "", keyword: str = "") -> Dict[st
     }
     """
     try:
-        fullPath = os.path.join(DOC_ROOT, doc_path)
+        # 确定文档路径
+        if doc_path.startswith("uikit/"):
+            # 处理UIKit文档
+            relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
+            fullPath = os.path.join(UIKIT_ROOT, relative_path)
+        else:
+            # 处理普通文档
+            fullPath = os.path.join(DOC_ROOT, doc_path)
         
         # 检查文件是否存在
         if not os.path.exists(fullPath):
