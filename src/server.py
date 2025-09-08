@@ -238,12 +238,13 @@ async def get_document_content(doc_path: str = "", keyword: str = "") -> Dict[st
             "error": None
         }
     except Exception as e:
+        error_msg = f"获取文档内容失败: {str(e)}"
         print(f"获取文档内容错误: {str(e)}")
         return {
             "content": None, 
             "docPath": doc_path,
             "matches": [],
-            "error": f"获取文档内容失败: {str(e)}"
+            "error": error_msg
         }
 
 def main():
