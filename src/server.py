@@ -64,19 +64,53 @@ async def search_platform_docs(platform: str = "") -> Dict[str, Any]:
         results = []
         matchedPlatforms = []
         
-        # 检查是否匹配 uikit
-        if "uikit" in lowercasePlatform:
-            if os.path.exists(UIKIT_ROOT) and os.path.isdir(UIKIT_ROOT):
+        # 检查uikit目录中是否有匹配的内容
+        if os.path.exists(UIKIT_ROOT) and os.path.isdir(UIKIT_ROOT):
+            uikitDirs = []
+            # 获取uikit下的所有子目录（如chatuikit, chatroomuikit等）
+            for item in os.listdir(UIKIT_ROOT):
+                itemPath = os.path.join(UIKIT_ROOT, item)
+                if os.path.isdir(itemPath):
+                    uikitDirs.append(item)
+            
+            # 检查是否有匹配的uikit子目录
+            matchedUikitDirs = []
+            if "uikit" in lowercasePlatform:
+                # 如果用户明确搜索uikit，则包含所有uikit目录
+                matchedUikitDirs = uikitDirs
                 matchedPlatforms.append("uikit")
-                
-                # 递归获取所有UIKit的Markdown文件
-                for root, _, files in os.walk(UIKIT_ROOT):
+            else:
+                # 检查uikit子目录下是否有与platform匹配的平台目录
+                for uikitDir in uikitDirs:
+                    uikitDirPath = os.path.join(UIKIT_ROOT, uikitDir)
+                    # 检查每个uikit子目录下的平台目录
+                    if os.path.isdir(uikitDirPath):
+                        platformDirs = [d for d in os.listdir(uikitDirPath) if os.path.isdir(os.path.join(uikitDirPath, d))]
+                        for platformDir in platformDirs:
+                            if lowercasePlatform and lowercasePlatform in platformDir.lower():
+                                matchedUikitDirs.append(uikitDir)
+                                if "uikit" not in matchedPlatforms:
+                                    matchedPlatforms.append("uikit")
+                                break
+            
+            # 递归获取所有匹配的UIKit的Markdown文件
+            for uikitDir in matchedUikitDirs:
+                uikitDirPath = os.path.join(UIKIT_ROOT, uikitDir)
+                for root, _, files in os.walk(uikitDirPath):
                     for file in files:
                         if file.endswith('.md'):
                             fullPath = os.path.join(root, file)
                             # 转换为相对路径，添加uikit前缀
                             relPath = os.path.relpath(fullPath, UIKIT_ROOT)
                             results.append(f"uikit/{relPath}")
+            
+            # 如果用户明确搜索uikit，则包含uikit根目录下的md文件
+            if "uikit" in lowercasePlatform:
+                for file in os.listdir(UIKIT_ROOT):
+                    if file.endswith('.md'):
+                        fullPath = os.path.join(UIKIT_ROOT, file)
+                        relPath = os.path.relpath(fullPath, UIKIT_ROOT)
+                        results.append(f"uikit/{relPath}")
         
         # 获取所有可用的平台目录
         if os.path.exists(DOC_ROOT) and os.path.isdir(DOC_ROOT):
