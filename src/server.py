@@ -25,6 +25,10 @@ async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, A
     - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等。
               支持部分匹配，例如输入 'and' 会匹配 'android'。
               支持常用词语映射：'小程序' -> 'applet', '鸿蒙' -> 'harmonyos', 'rn' -> 'react-native', 'rest' -> 'server-side'
+              
+              当指定平台时，将只返回该平台的文档。例如：
+              - 当 doc_type='uikit' 且 platform='android' 时，只返回 uikit 下 android 目录中的文档
+              - 当 doc_type='sdk' 且 platform='ios' 时，只返回 document/ios 目录下的文档
     
     返回:
     {
@@ -116,6 +120,15 @@ async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, A
                 for uikitDir in matchedUikitDirs:
                     uikitDirPath = os.path.join(UIKIT_ROOT, uikitDir)
                     for root, _, files in os.walk(uikitDirPath):
+                        # 检查当前目录是否匹配指定的平台
+                        if platform:
+                            # 获取相对于uikitDir的路径
+                            rel_to_uikit_dir = os.path.relpath(root, uikitDirPath)
+                            # 如果不是根目录，检查第一级子目录是否匹配平台名
+                            # 例如：chatuikit/android/xxx.md 中的 "android" 是否匹配指定的平台
+                            if rel_to_uikit_dir != "." and rel_to_uikit_dir.split(os.sep)[0].lower() != lowercasePlatform:
+                                continue
+                                
                         for file in files:
                             if file.endswith('.md'):
                                 fullPath = os.path.join(root, file)
@@ -123,12 +136,13 @@ async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, A
                                 relPath = os.path.relpath(fullPath, UIKIT_ROOT)
                                 results.append(f"uikit/{relPath}")
                 
-                # 包含uikit根目录下的md文件
-                for file in os.listdir(UIKIT_ROOT):
-                    if file.endswith('.md'):
-                        fullPath = os.path.join(UIKIT_ROOT, file)
-                        relPath = os.path.relpath(fullPath, UIKIT_ROOT)
-                        results.append(f"uikit/{relPath}")
+                # 包含uikit根目录下的md文件（如果没有指定平台或者是通用文档）
+                if not platform:  # 只有在不指定平台时，才包含根目录下的MD文件
+                    for file in os.listdir(UIKIT_ROOT):
+                        if file.endswith('.md'):
+                            fullPath = os.path.join(UIKIT_ROOT, file)
+                            relPath = os.path.relpath(fullPath, UIKIT_ROOT)
+                            results.append(f"uikit/{relPath}")
         
         # 如果是搜索SDK文档
         elif doc_type == "sdk":
