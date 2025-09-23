@@ -220,17 +220,23 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
 搜索特定平台的文档目录
 
 **参数：**
-- `platform` (string): 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等
+- `doc_type` (string): 文档类型，必填参数，只能为 'sdk' 或 'uikit'
+  - 'sdk': 搜索 document 目录下的文档
+  - 'uikit': 搜索 uikit 目录下的文档
+- `platform` (string): 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side' 等
   - 支持部分匹配，例如输入 'and' 会匹配 'android'
   - 支持常用词语映射：'小程序' -> 'applet', '鸿蒙' -> 'harmonyos', 'rn' -> 'react-native', 'rest' -> 'server-side'
 
 **返回：**
-- 匹配的文档路径列表，包括document和uikit目录下的相关文档
+- 匹配的文档路径列表，根据 doc_type 参数返回 document 或 uikit 目录下的相关文档
 
 **示例：**
 ```python
-# 搜索Android平台文档
-docs = await mcp.call("search_platform_docs", {"platform": "android"})
+# 搜索Android平台SDK文档
+docs = await mcp.call("search_platform_docs", {"doc_type": "sdk", "platform": "android"})
+
+# 搜索UIKit文档
+uikit_docs = await mcp.call("search_platform_docs", {"doc_type": "uikit", "platform": "chat"})
 ```
 
 ### 2. get_document_content
