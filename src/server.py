@@ -198,91 +198,127 @@ async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, A
 
 # 定义获取文档内容的函数
 @mcp.tool()
-async def get_document_content(doc_path: str = "", keyword: str = "") -> Dict[str, Any]:
+async def get_document_content(doc_paths: List[str] = None, keyword: str = "") -> Dict[str, Any]:
     """
     获取文档内容，并根据关键字搜索相关内容
     
     参数:
-    - doc_path: 文档相对路径，例如 "android/quickstart.md" 或 "uikit/index.md"，必须提供
+    - doc_paths: 文档相对路径列表，例如 ["android/quickstart.md", "uikit/chatuikit/android/chatuikit_quickstart.md"]
+                如果提供单个字符串，将自动转换为列表
     - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
     
     返回:
     {
-        "content": str or None,  # 文档的完整内容，如果文档不存在或发生错误则为None
-        "docPath": str,          # 请求的文档路径
-        "matches": [             # 匹配结果列表，如果没有提供关键字或没有匹配则为空列表
+        "documents": [           # 文档内容列表
             {
-                "lineNumber": int,  # 匹配行的行号（从1开始）
-                "context": str,     # 匹配行的上下文（包括前后各2行）
-                "line": str         # 匹配的具体行内容
+                "content": str or None,  # 文档的完整内容，如果文档不存在或发生错误则为None
+                "docPath": str,          # 文档路径
+                "matches": [             # 匹配结果列表，如果没有提供关键字或没有匹配则为空列表
+                    {
+                        "lineNumber": int,  # 匹配行的行号（从1开始）
+                        "context": str,     # 匹配行的上下文（包括前后各2行）
+                        "line": str         # 匹配的具体行内容
+                    },
+                    ...
+                ],
+                "error": str or None     # 错误信息，如果成功则为None
             },
             ...
         ],
-        "error": str or None     # 错误信息，如果成功则为None
+        "totalMatches": int,     # 所有文档中匹配的总数
+        "error": str or None     # 整体错误信息，如果成功则为None
     }
     """
     try:
-        # 确定文档路径
-        if doc_path.startswith("uikit/"):
-            # 处理UIKit文档
-            relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
-            fullPath = os.path.join(UIKIT_ROOT, relative_path)
-        else:
-            # 处理普通文档
-            fullPath = os.path.join(DOC_ROOT, doc_path)
+        # 处理输入参数
+        if doc_paths is None:
+            doc_paths = []
+        elif isinstance(doc_paths, str):
+            doc_paths = [doc_paths]
         
-        # 检查文件是否存在
-        if not os.path.exists(fullPath):
-            return {
-                "content": None, 
-                "docPath": doc_path,
-                "matches": [],
-                "error": "文档不存在"
-            }
+        # 初始化结果
+        results = []
+        total_matches = 0
         
-        # 读取文件内容
-        with open(fullPath, 'r', encoding='utf-8') as f:
-            content = f.read()
-        
-        # 如果没有关键字，返回全部内容
-        if not keyword or keyword.strip() == "":
-            return {
-                "content": content,
-                "docPath": doc_path,
-                "matches": [],
-                "error": None
-            }
-        
-        # 搜索关键字
-        lines = content.split('\n')
-        matches = []
-        
-        for i, line in enumerate(lines):
-            if keyword.lower() in line.lower():
-                # 提取匹配行的上下文（前后各2行）
-                startLine = max(0, i - 2)
-                endLine = min(len(lines) - 1, i + 2)
+        # 处理每个文档路径
+        for doc_path in doc_paths:
+            try:
+                # 确定文档路径
+                if doc_path.startswith("uikit/"):
+                    # 处理UIKit文档
+                    relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
+                    fullPath = os.path.join(UIKIT_ROOT, relative_path)
+                else:
+                    # 处理普通文档
+                    fullPath = os.path.join(DOC_ROOT, doc_path)
                 
-                context = '\n'.join(lines[startLine:endLine + 1])
-                matches.append({
-                    "lineNumber": i + 1,
-                    "context": context,
-                    "line": line
+                # 检查文件是否存在
+                if not os.path.exists(fullPath):
+                    results.append({
+                        "content": None, 
+                        "docPath": doc_path,
+                        "matches": [],
+                        "error": "文档不存在"
+                    })
+                    continue
+                
+                # 读取文件内容
+                with open(fullPath, 'r', encoding='utf-8') as f:
+                    content = f.read()
+                
+                # 初始化当前文档的匹配结果
+                matches = []
+                
+                # 如果有关键字，进行搜索
+                if keyword and keyword.strip() != "":
+                    lines = content.split('\n')
+                    
+                    for i, line in enumerate(lines):
+                        if keyword.lower() in line.lower():
+                            # 提取匹配行的上下文（前后各2行）
+                            startLine = max(0, i - 2)
+                            endLine = min(len(lines) - 1, i + 2)
+                            
+                            context = '\n'.join(lines[startLine:endLine + 1])
+                            matches.append({
+                                "lineNumber": i + 1,
+                                "context": context,
+                                "line": line
+                            })
+                
+                # 添加当前文档的结果
+                results.append({
+                    "content": content,
+                    "docPath": doc_path,
+                    "matches": matches,
+                    "error": None
+                })
+                
+                # 更新总匹配数
+                total_matches += len(matches)
+                
+            except Exception as e:
+                error_msg = f"获取文档 {doc_path} 内容失败: {str(e)}"
+                print(f"获取文档内容错误: {str(e)}")
+                results.append({
+                    "content": None, 
+                    "docPath": doc_path,
+                    "matches": [],
+                    "error": error_msg
                 })
         
+        # 返回所有文档的结果
         return {
-            "content": content,
-            "docPath": doc_path,
-            "matches": matches,
-            "error": None
+            "documents": results,
+            "totalMatches": total_matches,
+            "error": None if results else "未提供有效的文档路径"
         }
     except Exception as e:
         error_msg = f"获取文档内容失败: {str(e)}"
         print(f"获取文档内容错误: {str(e)}")
         return {
-            "content": None, 
-            "docPath": doc_path,
-            "matches": [],
+            "documents": [],
+            "totalMatches": 0,
             "error": error_msg
         }
 
