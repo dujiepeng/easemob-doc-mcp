@@ -76,6 +76,7 @@ async def search_platform_docs(
         # 平台名称映射字典
         platform_mapping = {
             "小程序": "applet",
+            "uni-app": "applet",
             "鸿蒙": "harmonyos",
             "rn": "react-native",
             "rest": "server-side"
