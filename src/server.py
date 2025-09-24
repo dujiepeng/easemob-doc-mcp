@@ -12,13 +12,15 @@ mcp = FastMCP()
 DOC_ROOT = Path(__file__).parent.parent / "document"
 # UIKit文档目录
 UIKIT_ROOT = Path(__file__).parent.parent / "uikit"
+# CallKit文档目录
+CALLKIT_ROOT = Path(__file__).parent.parent / "callkit"
 
 # 定义搜索文档的函数
 @mcp.tool()
 async def search_platform_docs(
     doc_type: str = Field(
         default="sdk",
-        description="文档类型，必填参数，只能为 'sdk' 或 'uikit'。'sdk'表示搜索document目录下的文档，'uikit'表示搜索uikit目录下的文档"
+        description="文档类型，必填参数，可选值为 'sdk'、'uikit' 或 'callkit'。'sdk'表示搜索document目录下的文档，'uikit'表示搜索uikit目录下的文档，'callkit'表示搜索callkit目录下的文档"
     ),
     platform: str = Field(
         default="",
@@ -29,9 +31,10 @@ async def search_platform_docs(
     搜索特定平台的文档目录
     
     参数:
-    - doc_type: 文档类型，必填参数，只能为 'sdk' 或 'uikit'。
+    - doc_type: 文档类型，必填参数，可选值为 'sdk'、'uikit' 或 'callkit'。
               'sdk': 搜索 document 目录下的文档
               'uikit': 搜索 uikit 目录下的文档
+              'callkit': 搜索 callkit 目录下的文档
     - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等。
               支持部分匹配，例如输入 'and' 会匹配 'android'。
               支持常用词语映射：'小程序' -> 'applet', '鸿蒙' -> 'harmonyos', 'rn' -> 'react-native', 'rest' -> 'server-side'
@@ -62,12 +65,12 @@ async def search_platform_docs(
     """
     try:
         # 验证doc_type参数
-        if doc_type.lower() not in ["sdk", "uikit"]:
+        if doc_type.lower() not in ["sdk", "uikit", "callkit"]:
             return {
                 "documents": [],
                 "platform": platform,
                 "count": 0,
-                "error": f"无效的文档类型: {doc_type}，必须为 'sdk' 或 'uikit'"
+                "error": f"无效的文档类型: {doc_type}，必须为 'sdk'、'uikit' 或 'callkit'"
             }
             
         # 平台名称映射字典
@@ -153,6 +156,68 @@ async def search_platform_docs(
                             fullPath = os.path.join(UIKIT_ROOT, file)
                             relPath = os.path.relpath(fullPath, UIKIT_ROOT)
                             results.append(f"uikit/{relPath}")
+        
+        # 如果是搜索CallKit文档
+        elif doc_type == "callkit":
+            if os.path.exists(CALLKIT_ROOT) and os.path.isdir(CALLKIT_ROOT):
+                callkitDirs = []
+                # 获取callkit下的所有子目录
+                for item in os.listdir(CALLKIT_ROOT):
+                    itemPath = os.path.join(CALLKIT_ROOT, item)
+                    if os.path.isdir(itemPath):
+                        callkitDirs.append(item)
+                
+                # 检查是否有匹配的callkit子目录
+                matchedCallkitDirs = []
+                if not platform:  # 如果没有指定平台，则包含所有callkit目录
+                    matchedCallkitDirs = callkitDirs
+                    matchedPlatforms.append("callkit")
+                else:
+                    # 检查callkit子目录下是否有与platform匹配的平台目录
+                    for callkitDir in callkitDirs:
+                        if lowercasePlatform in callkitDir.lower():
+                            matchedCallkitDirs.append(callkitDir)
+                            if "callkit" not in matchedPlatforms:
+                                matchedPlatforms.append("callkit")
+                            continue
+                            
+                        callkitDirPath = os.path.join(CALLKIT_ROOT, callkitDir)
+                        # 检查每个callkit子目录下的平台目录
+                        if os.path.isdir(callkitDirPath):
+                            platformDirs = [d for d in os.listdir(callkitDirPath) if os.path.isdir(os.path.join(callkitDirPath, d))]
+                            for platformDir in platformDirs:
+                                if lowercasePlatform and lowercasePlatform in platformDir.lower():
+                                    matchedCallkitDirs.append(callkitDir)
+                                    if "callkit" not in matchedPlatforms:
+                                        matchedPlatforms.append("callkit")
+                                    break
+                
+                # 递归获取所有匹配的CallKit的Markdown文件
+                for callkitDir in matchedCallkitDirs:
+                    callkitDirPath = os.path.join(CALLKIT_ROOT, callkitDir)
+                    for root, _, files in os.walk(callkitDirPath):
+                        # 检查当前目录是否匹配指定的平台
+                        if platform:
+                            # 获取相对于callkitDir的路径
+                            rel_to_callkit_dir = os.path.relpath(root, callkitDirPath)
+                            # 如果不是根目录，检查第一级子目录是否匹配平台名
+                            if rel_to_callkit_dir != "." and rel_to_callkit_dir.split(os.sep)[0].lower() != lowercasePlatform:
+                                continue
+                                
+                        for file in files:
+                            if file.endswith('.md'):
+                                fullPath = os.path.join(root, file)
+                                # 转换为相对路径，添加callkit前缀
+                                relPath = os.path.relpath(fullPath, CALLKIT_ROOT)
+                                results.append(f"callkit/{relPath}")
+                
+                # 包含callkit根目录下的md文件（如果没有指定平台或者是通用文档）
+                if not platform:  # 只有在不指定平台时，才包含根目录下的MD文件
+                    for file in os.listdir(CALLKIT_ROOT):
+                        if file.endswith('.md'):
+                            fullPath = os.path.join(CALLKIT_ROOT, file)
+                            relPath = os.path.relpath(fullPath, CALLKIT_ROOT)
+                            results.append(f"callkit/{relPath}")
         
         # 如果是搜索SDK文档
         elif doc_type == "sdk":
@@ -267,6 +332,10 @@ async def get_document_content(
                     # 处理UIKit文档
                     relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
                     fullPath = os.path.join(UIKIT_ROOT, relative_path)
+                elif doc_path.startswith("callkit/"):
+                    # 处理CallKit文档
+                    relative_path = doc_path[8:]  # 移除 "callkit/" 前缀
+                    fullPath = os.path.join(CALLKIT_ROOT, relative_path)
                 else:
                     # 处理普通文档
                     fullPath = os.path.join(DOC_ROOT, doc_path)

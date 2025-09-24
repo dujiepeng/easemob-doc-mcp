@@ -16,6 +16,7 @@ NC='\033[0m' # No Color
 PROJECT_DIR="$(cd "$(dirname "${BASH_SOURCE[0]}")" && pwd)"
 DOCUMENT_DIR="$PROJECT_DIR/document"
 UIKIT_DIR="$PROJECT_DIR/uikit"
+CALLKIT_DIR="$PROJECT_DIR/callkit"
 TEMP_DIR="$PROJECT_DIR/temp_docs"
 
 # GitHub 仓库信息
@@ -72,6 +73,7 @@ main() {
     # 确保目标目录存在
     mkdir -p "$DOCUMENT_DIR"
     mkdir -p "$UIKIT_DIR"
+    mkdir -p "$CALLKIT_DIR"
     
     # 复制document目录
     if [ -d "$TEMP_DIR/docs/document" ]; then
@@ -91,12 +93,22 @@ main() {
         print_error "GitHub仓库中不存在docs/uikit目录"
     fi
     
+    # 复制callkit目录
+    if [ -d "$TEMP_DIR/docs/callkit" ]; then
+        print_info "更新callkit目录..."
+        rsync -a --delete "$TEMP_DIR/docs/callkit/" "$CALLKIT_DIR/"
+        print_success "callkit目录更新完成"
+    else
+        print_error "GitHub仓库中不存在docs/callkit目录"
+    fi
+    
     # 清理临时目录
     cleanup
     
     print_success "文档更新完成！"
     print_info "document目录: $DOCUMENT_DIR"
     print_info "uikit目录: $UIKIT_DIR"
+    print_info "callkit目录: $CALLKIT_DIR"
 }
 
 # 运行主函数
