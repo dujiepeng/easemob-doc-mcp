@@ -100,7 +100,8 @@ python src/server.py --help
 {
   "easemob-doc-mcp": {
     "transport": "http",
-    "url": "http://127.0.0.1:9000/mcp/"
+    "url": "http://127.0.0.1:9000/mcp/",
+    "description": "环信文档搜索工具"
   }
 }
 ```
@@ -115,7 +116,8 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
 {
   "easemob-doc-mcp": {
     "transport": "stdio",
-    "command": "python /完整路径/easemob-doc-mcp/src/server.py --transport stdio"
+    "command": "python /完整路径/easemob-doc-mcp/src/server.py --transport stdio",
+    "description": "环信文档搜索工具"
   }
 }
 ```
