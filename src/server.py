@@ -3,6 +3,7 @@ import os
 import argparse
 from typing import List, Dict, Any
 from pathlib import Path
+from pydantic import Field
 
 # 创建FastMCP实例
 mcp = FastMCP()
@@ -14,7 +15,16 @@ UIKIT_ROOT = Path(__file__).parent.parent / "uikit"
 
 # 定义搜索文档的函数
 @mcp.tool()
-async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, Any]:
+async def search_platform_docs(
+    doc_type: str = Field(
+        default="sdk",
+        description="文档类型，必填参数，只能为 'sdk' 或 'uikit'。'sdk'表示搜索document目录下的文档，'uikit'表示搜索uikit目录下的文档"
+    ),
+    platform: str = Field(
+        default="",
+        description="平台名称，如android、ios、web等。支持部分匹配，如输入'and'会匹配'android'。支持映射：小程序->applet、鸿蒙->harmonyos"
+    )
+) -> Dict[str, Any]:
     """
     搜索特定平台的文档目录
     
@@ -198,7 +208,16 @@ async def search_platform_docs(doc_type: str, platform: str = "") -> Dict[str, A
 
 # 定义获取文档内容的函数
 @mcp.tool()
-async def get_document_content(doc_paths: List[str] = None, keyword: str = "") -> Dict[str, Any]:
+async def get_document_content(
+    doc_paths: List[str] = Field(
+        default=None,
+        description="文档相对路径列表，例如 [\"android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，如果提供单个字符串，将自动转换为列表"
+    ),
+    keyword: str = Field(
+        default="",
+        description="搜索关键字（可选），如果提供则会在文档中搜索匹配的内容，返回匹配行及其上下文"
+    )
+) -> Dict[str, Any]:
     """
     获取文档内容，并根据关键字搜索相关内容
     
