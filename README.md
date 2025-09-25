@@ -48,6 +48,7 @@ bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/ma
 - 支持自定义端口部署
 - 支持多种传输模式（HTTP、stdio、SSE）
 - 支持定期自动更新文档
+- 支持 Linux 和 macOS 系统一键部署
 
 ## 安装
 
@@ -132,15 +133,18 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
 
 ## 服务器部署
 
-### 方案1：使用 systemd 服务（推荐）
+### 方案1：使用一键部署脚本（推荐）
+
+一键部署脚本支持 Linux 和 macOS 系统，会自动检测操作系统并使用适当的方式部署服务。
 
 1. 运行部署脚本：
    ```bash
-   chmod +x deploy.sh
-   ./deploy.sh
+   bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/main/install.sh)
    ```
 
 2. 管理服务：
+
+   **Linux 系统**：
    ```bash
    # 查看服务状态
    sudo systemctl status easemob-doc-mcp
@@ -156,6 +160,25 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
    
    # 查看日志
    sudo journalctl -u easemob-doc-mcp -f
+   ```
+
+   **macOS 系统**：
+   ```bash
+   # 查看服务状态
+   launchctl list | grep com.easemob.doc-mcp
+   
+   # 启动服务
+   launchctl start com.easemob.doc-mcp
+   
+   # 停止服务
+   launchctl stop com.easemob.doc-mcp
+   
+   # 重启服务
+   launchctl unload ~/Library/LaunchAgents/com.easemob.doc-mcp.plist
+   launchctl load -w ~/Library/LaunchAgents/com.easemob.doc-mcp.plist
+   
+   # 查看日志
+   tail -f ~/Library/Application\ Support/easemob-doc-mcp/stdout.log ~/Library/Application\ Support/easemob-doc-mcp/stderr.log
    ```
 
 ### 方案2：使用 Docker 部署
@@ -362,12 +385,12 @@ python tests/test_mcp_official.py
 ### 调试步骤
 
 1. **配置环境**：
+
+   **Linux/macOS**：
    ```bash
    # 创建并激活虚拟环境（推荐）
    python -m venv venv
-   source venv/bin/activate  # Linux/macOS
-   # 或
-   venv\Scripts\activate  # Windows
+   source venv/bin/activate
    
    # 安装依赖
    pip install -r requirements.txt
@@ -375,6 +398,16 @@ python tests/test_mcp_official.py
    # 拉取最新文档（可选）
    chmod +x update_docs.sh
    ./update_docs.sh
+   ```
+   
+   **Windows**：
+   ```bash
+   # 创建并激活虚拟环境（推荐）
+   python -m venv venv
+   venv\Scripts\activate
+   
+   # 安装依赖
+   pip install -r requirements.txt
    ```
 
 2. **配置 Cursor**：

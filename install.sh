@@ -82,73 +82,6 @@ if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
     fi
 fi
 
-# 配置变量
-PROJECT_NAME="easemob-doc-mcp"
-PROJECT_DIR="/opt/$PROJECT_NAME"
-GITHUB_REPO="https://github.com/dujiepeng/easemob-doc-mcp.git"
-SERVICE_USER="www-data"
-VENV_DIR="$PROJECT_DIR/venv"
-
-# 检查并安装基本工具（在任何函数调用之前）
-echo -e "${BLUE}[INFO]${NC} 检查基本工具..."
-
-# 修复PATH环境变量（如果被错误设置）
-if [[ "$PATH" == "/mcp/" ]] || [[ "$PATH" == "$MCP_PATH" ]]; then
-    echo -e "${YELLOW}[WARNING]${NC} 检测到PATH环境变量被错误设置，正在修复..."
-    export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
-    echo -e "${GREEN}[INFO]${NC} PATH环境变量已修复"
-fi
-
-# 调试信息
-echo -e "${BLUE}[DEBUG]${NC} 当前PATH: $PATH"
-echo -e "${BLUE}[DEBUG]${NC} 当前用户: $(whoami)"
-echo -e "${BLUE}[DEBUG]${NC} 当前目录: $(pwd)"
-echo -e "${BLUE}[DEBUG]${NC} MCP_PATH变量值: $MCP_PATH"
-
-# 检查apt是否可用
-echo -e "${BLUE}[DEBUG]${NC} 检查apt命令..."
-if apt --version >/dev/null 2>&1; then
-    echo -e "${GREEN}[DEBUG]${NC} apt命令可用"
-else
-    echo -e "${RED}[ERROR]${NC} apt包管理器不可用，请确保系统为Ubuntu/Debian"
-    echo -e "${RED}[DEBUG]${NC} apt命令检查失败"
-    exit 1
-fi
-
-# 检查并安装基本工具包
-MISSING_TOOLS=()
-
-if ! command -v grep &> /dev/null; then
-    MISSING_TOOLS+=("grep")
-fi
-
-if ! command -v sudo &> /dev/null; then
-    MISSING_TOOLS+=("sudo")
-fi
-
-if ! command -v netstat &> /dev/null; then
-    MISSING_TOOLS+=("net-tools")
-fi
-
-if ! command -v curl &> /dev/null; then
-    MISSING_TOOLS+=("curl")
-fi
-
-if ! command -v git &> /dev/null; then
-    MISSING_TOOLS+=("git")
-fi
-
-if ! command -v python3 &> /dev/null; then
-    MISSING_TOOLS+=("python3" "python3-pip" "python3-venv")
-fi
-
-# 安装缺失的工具
-if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
-    echo -e "${BLUE}[INFO]${NC} 安装缺失的工具: ${MISSING_TOOLS[*]}..."
-    apt update
-    apt install -y "${MISSING_TOOLS[@]}"
-fi
-
 # 打印带颜色的消息
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
@@ -166,9 +99,25 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 检测操作系统类型
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        OS_TYPE="macos"
+        print_info "检测到 macOS 系统"
+    elif [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        OS_NAME=$NAME
+        OS_TYPE="linux"
+        print_info "检测到 Linux 系统: $OS_NAME"
+    else
+        print_error "无法检测操作系统类型"
+        exit 1
+    fi
+}
+
 # 检查是否为root用户
 check_root() {
-    if [[ $EUID -eq 0 ]]; then
+    if [[ "$OS_TYPE" == "linux" && $EUID -eq 0 ]]; then
         print_warning "检测到root用户，建议使用普通用户运行此脚本"
         read -p "是否继续？(y/N): " -n 1 -r
         echo
@@ -178,21 +127,136 @@ check_root() {
     fi
 }
 
+# 配置变量
+setup_variables() {
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        PROJECT_NAME="easemob-doc-mcp"
+        PROJECT_DIR="$HOME/Library/Application Support/$PROJECT_NAME"
+        GITHUB_REPO="https://github.com/dujiepeng/easemob-doc-mcp.git"
+        SERVICE_USER="$USER"
+        VENV_DIR="$PROJECT_DIR/venv"
+        LAUNCHD_PLIST_PATH="$HOME/Library/LaunchAgents/com.easemob.doc-mcp.plist"
+    else
+        PROJECT_NAME="easemob-doc-mcp"
+        PROJECT_DIR="/opt/$PROJECT_NAME"
+        GITHUB_REPO="https://github.com/dujiepeng/easemob-doc-mcp.git"
+        SERVICE_USER="www-data"
+        VENV_DIR="$PROJECT_DIR/venv"
+    fi
+}
+
+# 检查并安装基本工具
+install_base_tools() {
+    print_info "检查基本工具..."
+
+    # 修复PATH环境变量（如果被错误设置）
+    if [[ "$PATH" == "/mcp/" ]] || [[ "$PATH" == "$MCP_PATH" ]]; then
+        print_warning "检测到PATH环境变量被错误设置，正在修复..."
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            export PATH="/usr/local/bin:/usr/bin:/bin:/usr/sbin:/sbin"
+        else
+            export PATH="/usr/local/sbin:/usr/local/bin:/usr/sbin:/usr/bin:/sbin:/bin"
+        fi
+        print_info "PATH环境变量已修复"
+    fi
+
+    # 调试信息
+    print_info "当前PATH: $PATH"
+    print_info "当前用户: $(whoami)"
+    print_info "当前目录: $(pwd)"
+    print_info "MCP_PATH变量值: $MCP_PATH"
+
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        # 检查brew是否安装
+        if ! command -v brew &> /dev/null; then
+            print_info "安装 Homebrew..."
+            /bin/bash -c "$(curl -fsSL https://raw.githubusercontent.com/Homebrew/install/HEAD/install.sh)"
+        fi
+
+        # 检查并安装基本工具
+        MISSING_TOOLS=()
+
+        if ! command -v git &> /dev/null; then
+            MISSING_TOOLS+=("git")
+        fi
+
+        if ! command -v curl &> /dev/null; then
+            MISSING_TOOLS+=("curl")
+        fi
+
+        if ! command -v python3 &> /dev/null; then
+            MISSING_TOOLS+=("python3")
+        fi
+
+        # 安装缺失的工具
+        if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
+            print_info "安装缺失的工具: ${MISSING_TOOLS[*]}..."
+            brew install "${MISSING_TOOLS[@]}"
+        fi
+    else
+        # 检查apt是否可用
+        print_info "检查apt命令..."
+        if apt --version >/dev/null 2>&1; then
+            print_info "apt命令可用"
+        else
+            print_error "apt包管理器不可用，请确保系统为Ubuntu/Debian"
+            print_info "apt命令检查失败"
+            exit 1
+        fi
+
+        # 检查并安装基本工具包
+        MISSING_TOOLS=()
+
+        if ! command -v grep &> /dev/null; then
+            MISSING_TOOLS+=("grep")
+        fi
+
+        if ! command -v sudo &> /dev/null; then
+            MISSING_TOOLS+=("sudo")
+        fi
+
+        if ! command -v netstat &> /dev/null; then
+            MISSING_TOOLS+=("net-tools")
+        fi
+
+        if ! command -v curl &> /dev/null; then
+            MISSING_TOOLS+=("curl")
+        fi
+
+        if ! command -v git &> /dev/null; then
+            MISSING_TOOLS+=("git")
+        fi
+
+        if ! command -v python3 &> /dev/null; then
+            MISSING_TOOLS+=("python3" "python3-pip" "python3-venv")
+        fi
+
+        # 安装缺失的工具
+        if [[ ${#MISSING_TOOLS[@]} -gt 0 ]]; then
+            print_info "安装缺失的工具: ${MISSING_TOOLS[*]}..."
+            apt update
+            apt install -y "${MISSING_TOOLS[@]}"
+        fi
+    fi
+}
+
 # 检查系统要求
 check_system() {
     print_info "检查系统要求..."
     
-    # 检查操作系统
-    if [[ -f /etc/os-release ]]; then
-        . /etc/os-release
-        OS=$NAME
-        VER=$VERSION_ID
+    # 检查操作系统版本
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        OS_VER=$(sw_vers -productVersion)
+        print_info "macOS 版本: $OS_VER"
     else
-        print_error "无法检测操作系统"
-        exit 1
+        if [[ -f /etc/os-release ]]; then
+            . /etc/os-release
+            OS=$NAME
+            VER=$VERSION_ID
+            print_info "操作系统: $OS $VER"
+        fi
     fi
     
-    print_info "操作系统: $OS $VER"
     print_info "传输协议: $TRANSPORT"
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         print_info "主机: $HOST"
@@ -205,12 +269,23 @@ check_system() {
     
     # 检查端口是否被占用（仅对http和sse传输）
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
-        if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
-            print_warning "端口 $PORT 已被占用"
-            read -p "是否继续？(y/N): " -n 1 -r
-            echo
-            if [[ ! $REPLY =~ ^[Yy]$ ]]; then
-                exit 1
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            if lsof -i :$PORT &>/dev/null; then
+                print_warning "端口 $PORT 已被占用"
+                read -p "是否继续？(y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
+            fi
+        else
+            if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+                print_warning "端口 $PORT 已被占用"
+                read -p "是否继续？(y/N): " -n 1 -r
+                echo
+                if [[ ! $REPLY =~ ^[Yy]$ ]]; then
+                    exit 1
+                fi
             fi
         fi
     fi
@@ -222,7 +297,6 @@ setup_project() {
     
     # 创建项目目录
     mkdir -p $PROJECT_DIR
-    chown $USER:$USER $PROJECT_DIR
     
     # 如果目录已存在且有内容，询问是否覆盖
     if [[ -d "$PROJECT_DIR/src" ]]; then
@@ -256,26 +330,31 @@ setup_venv() {
     
     cd $PROJECT_DIR
     
-    # 检查并安装python3-venv
-    if ! dpkg -s python3-venv >/dev/null 2>&1; then
-        print_info "安装python3-venv..."
-        apt update
-        apt install -y python3-venv
-    fi
-    
-    # 创建虚拟环境
-    if command -v python3.12 &> /dev/null; then
-        print_info "使用Python 3.12创建虚拟环境..."
-        python3.12 -m venv $VENV_DIR
-    elif command -v python3.11 &> /dev/null; then
-        print_info "使用Python 3.11创建虚拟环境..."
-        python3.11 -m venv $VENV_DIR
-    elif command -v python3.10 &> /dev/null; then
-        print_info "使用Python 3.10创建虚拟环境..."
-        python3.10 -m venv $VENV_DIR
-    else
-        print_info "使用默认Python3创建虚拟环境..."
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        # macOS 上创建虚拟环境
         python3 -m venv $VENV_DIR
+    else
+        # 检查并安装python3-venv
+        if ! dpkg -s python3-venv >/dev/null 2>&1; then
+            print_info "安装python3-venv..."
+            apt update
+            apt install -y python3-venv
+        fi
+        
+        # 创建虚拟环境
+        if command -v python3.12 &> /dev/null; then
+            print_info "使用Python 3.12创建虚拟环境..."
+            python3.12 -m venv $VENV_DIR
+        elif command -v python3.11 &> /dev/null; then
+            print_info "使用Python 3.11创建虚拟环境..."
+            python3.11 -m venv $VENV_DIR
+        elif command -v python3.10 &> /dev/null; then
+            print_info "使用Python 3.10创建虚拟环境..."
+            python3.10 -m venv $VENV_DIR
+        else
+            print_info "使用默认Python3创建虚拟环境..."
+            python3 -m venv $VENV_DIR
+        fi
     fi
     
     # 检查虚拟环境是否创建成功
@@ -308,18 +387,74 @@ install_dependencies() {
     print_success "依赖安装完成"
 }
 
-# 创建systemd服务
+# 创建服务
 create_service() {
-    print_info "创建systemd服务..."
+    print_info "创建服务..."
     
     # 构建启动命令
-    START_CMD="$VENV_DIR/bin/python src/server.py --transport $TRANSPORT"
+    START_CMD="$VENV_DIR/bin/python $PROJECT_DIR/src/server.py --transport $TRANSPORT"
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         START_CMD="$START_CMD --host $HOST --port $PORT --path $MCP_PATH"
     fi
     
-    # 创建服务文件
-    cat > /tmp/easemob-doc-mcp.service << EOF
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        # 为 macOS 创建 LaunchAgent
+        print_info "创建 macOS LaunchAgent..."
+        
+        # 创建 plist 文件
+        cat > "$LAUNCHD_PLIST_PATH" << EOF
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE plist PUBLIC "-//Apple//DTD PLIST 1.0//EN" "http://www.apple.com/DTDs/PropertyList-1.0.dtd">
+<plist version="1.0">
+<dict>
+    <key>Label</key>
+    <string>com.easemob.doc-mcp</string>
+    <key>ProgramArguments</key>
+    <array>
+        <string>$VENV_DIR/bin/python</string>
+        <string>$PROJECT_DIR/src/server.py</string>
+        <string>--transport</string>
+        <string>$TRANSPORT</string>
+EOF
+        
+        if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
+            cat >> "$LAUNCHD_PLIST_PATH" << EOF
+        <string>--host</string>
+        <string>$HOST</string>
+        <string>--port</string>
+        <string>$PORT</string>
+        <string>--path</string>
+        <string>$MCP_PATH</string>
+EOF
+        fi
+        
+        cat >> "$LAUNCHD_PLIST_PATH" << EOF
+    </array>
+    <key>RunAtLoad</key>
+    <true/>
+    <key>KeepAlive</key>
+    <true/>
+    <key>WorkingDirectory</key>
+    <string>$PROJECT_DIR</string>
+    <key>StandardOutPath</key>
+    <string>$PROJECT_DIR/stdout.log</string>
+    <key>StandardErrorPath</key>
+    <string>$PROJECT_DIR/stderr.log</string>
+</dict>
+</plist>
+EOF
+        
+        # 加载 LaunchAgent
+        launchctl unload "$LAUNCHD_PLIST_PATH" 2>/dev/null || true
+        launchctl load -w "$LAUNCHD_PLIST_PATH"
+        
+        print_success "macOS LaunchAgent 创建完成"
+    else
+        # 为 Linux 创建 systemd 服务
+        print_info "创建 systemd 服务..."
+        
+        # 创建服务文件
+        cat > /tmp/easemob-doc-mcp.service << EOF
 [Unit]
 Description=环信文档搜索 MCP 服务
 After=network.target
@@ -338,31 +473,49 @@ StandardError=journal
 [Install]
 WantedBy=multi-user.target
 EOF
-    
-    # 安装服务
-    cp /tmp/easemob-doc-mcp.service /etc/systemd/system/
-    systemctl daemon-reload
-    systemctl enable easemob-doc-mcp
-    
-    print_success "systemd服务创建完成"
+        
+        # 安装服务
+        cp /tmp/easemob-doc-mcp.service /etc/systemd/system/
+        systemctl daemon-reload
+        systemctl enable easemob-doc-mcp
+        
+        print_success "systemd 服务创建完成"
+    fi
 }
 
 # 启动服务
 start_service() {
     print_info "启动服务..."
     
-    systemctl start easemob-doc-mcp
-    
-    # 等待服务启动
-    sleep 3
-    
-    # 检查服务状态
-    if systemctl is-active --quiet easemob-doc-mcp; then
-        print_success "服务启动成功！"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        # 启动 macOS 服务
+        launchctl start com.easemob.doc-mcp
+        
+        # 等待服务启动
+        sleep 3
+        
+        # 检查服务状态
+        if launchctl list | grep -q "com.easemob.doc-mcp"; then
+            print_success "服务启动成功！"
+        else
+            print_error "服务启动失败"
+            exit 1
+        fi
     else
-        print_error "服务启动失败"
-        systemctl status easemob-doc-mcp
-        exit 1
+        # 启动 Linux 服务
+        systemctl start easemob-doc-mcp
+        
+        # 等待服务启动
+        sleep 3
+        
+        # 检查服务状态
+        if systemctl is-active --quiet easemob-doc-mcp; then
+            print_success "服务启动成功！"
+        else
+            print_error "服务启动失败"
+            systemctl status easemob-doc-mcp
+            exit 1
+        fi
     fi
 }
 
@@ -399,7 +552,13 @@ show_completion() {
     echo "项目信息:"
     echo "  项目目录: $PROJECT_DIR"
     echo "  虚拟环境: $VENV_DIR"
-    echo "  服务名称: easemob-doc-mcp"
+    
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo "  服务名称: com.easemob.doc-mcp"
+    else
+        echo "  服务名称: easemob-doc-mcp"
+    fi
+    
     echo "  传输协议: $TRANSPORT"
     if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
         echo "  主机: $HOST"
@@ -407,40 +566,70 @@ show_completion() {
         echo "  路径: $MCP_PATH"
     fi
     echo
-    echo "服务管理:"
-    echo "  查看状态: sudo systemctl status easemob-doc-mcp"
-    echo "  启动服务: sudo systemctl start easemob-doc-mcp"
-    echo "  停止服务: sudo systemctl stop easemob-doc-mcp"
-    echo "  重启服务: sudo systemctl restart easemob-doc-mcp"
-    echo "  查看日志: sudo journalctl -u easemob-doc-mcp -f"
+    
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        echo "服务管理:"
+        echo "  查看状态: launchctl list | grep com.easemob.doc-mcp"
+        echo "  启动服务: launchctl start com.easemob.doc-mcp"
+        echo "  停止服务: launchctl stop com.easemob.doc-mcp"
+        echo "  重启服务: launchctl unload $LAUNCHD_PLIST_PATH && launchctl load -w $LAUNCHD_PLIST_PATH"
+        echo "  查看日志: tail -f $PROJECT_DIR/stdout.log $PROJECT_DIR/stderr.log"
+    else
+        echo "服务管理:"
+        echo "  查看状态: sudo systemctl status easemob-doc-mcp"
+        echo "  启动服务: sudo systemctl start easemob-doc-mcp"
+        echo "  停止服务: sudo systemctl stop easemob-doc-mcp"
+        echo "  重启服务: sudo systemctl restart easemob-doc-mcp"
+        echo "  查看日志: sudo journalctl -u easemob-doc-mcp -f"
+    fi
     echo
+    
     if [[ "$TRANSPORT" == "http" ]]; then
         echo "服务地址:"
-        echo "  HTTP: http://$(hostname -I | awk '{print $1}'):$PORT"
-        echo "  MCP: http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH"
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "127.0.0.1")
+        else
+            LOCAL_IP=$(hostname -I | awk '{print $1}')
+        fi
+        echo "  HTTP: http://$LOCAL_IP:$PORT"
+        echo "  MCP: http://$LOCAL_IP:$PORT$MCP_PATH"
         echo
         echo "Cursor配置:"
         echo "  在Cursor的MCP配置中添加:"
         echo "  {"
         echo "    \"easemob-doc-mcp\": {"
         echo "      \"transport\": \"http\","
-        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH\""
+        echo "      \"url\": \"http://$LOCAL_IP:$PORT$MCP_PATH\""
         echo "    }"
         echo "  }"
     elif [[ "$TRANSPORT" == "sse" ]]; then
         echo "服务地址:"
-        echo "  SSE: http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH"
+        if [[ "$OS_TYPE" == "macos" ]]; then
+            LOCAL_IP=$(ipconfig getifaddr en0 2>/dev/null || ipconfig getifaddr en1 2>/dev/null || echo "127.0.0.1")
+        else
+            LOCAL_IP=$(hostname -I | awk '{print $1}')
+        fi
+        echo "  SSE: http://$LOCAL_IP:$PORT$MCP_PATH"
         echo
         echo "Cursor配置:"
         echo "  在Cursor的MCP配置中添加:"
         echo "  {"
         echo "    \"easemob-doc-mcp\": {"
         echo "      \"transport\": \"sse\","
-        echo "      \"url\": \"http://$(hostname -I | awk '{print $1}'):$PORT$MCP_PATH\""
+        echo "      \"url\": \"http://$LOCAL_IP:$PORT$MCP_PATH\""
         echo "    }"
         echo "  }"
     else
         echo "stdio传输模式，无需HTTP配置"
+        echo
+        echo "Cursor配置:"
+        echo "  在Cursor的MCP配置中添加:"
+        echo "  {"
+        echo "    \"easemob-doc-mcp\": {"
+        echo "      \"transport\": \"stdio\","
+        echo "      \"command\": \"$VENV_DIR/bin/python $PROJECT_DIR/src/server.py --transport stdio\""
+        echo "    }"
+        echo "  }"
     fi
     echo
     print_success "部署完成！服务已自动启动并设置为开机自启。"
@@ -469,12 +658,15 @@ main() {
     echo "=========================================="
     echo -e "${NC}"
     
+    detect_os
+    setup_variables
+    install_base_tools
     check_root
     check_system
     setup_project
     setup_venv
     install_dependencies
-    fetch_documents  # 添加拉取文档步骤
+    fetch_documents
     create_service
     start_service
     test_service
@@ -485,4 +677,4 @@ main() {
 trap 'print_error "部署过程中发生错误，请检查日志"; exit 1' ERR
 
 # 运行主函数
-main "$@" 
+main "$@"

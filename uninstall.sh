@@ -23,7 +23,7 @@ DEFAULT_PATH="/mcp/"
 TRANSPORT=$DEFAULT_TRANSPORT
 HOST=$DEFAULT_HOST
 PORT=$DEFAULT_PORT
-PATH=$DEFAULT_PATH
+MCP_PATH=$DEFAULT_PATH
 
 # 解析命令行参数
 while [[ $# -gt 0 ]]; do
@@ -41,7 +41,7 @@ while [[ $# -gt 0 ]]; do
             shift 2
             ;;
         --path)
-            PATH="$2"
+            MCP_PATH="$2"
             shift 2
             ;;
         --help|-h)
@@ -82,10 +82,6 @@ if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
     fi
 fi
 
-# 配置变量
-PROJECT_NAME="easemob-doc-mcp"
-PROJECT_DIR="/opt/$PROJECT_NAME"
-
 print_info() {
     echo -e "${BLUE}[INFO]${NC} $1"
 }
@@ -102,17 +98,49 @@ print_error() {
     echo -e "${RED}[ERROR]${NC} $1"
 }
 
+# 检测操作系统类型
+detect_os() {
+    if [[ "$OSTYPE" == "darwin"* ]]; then
+        OS_TYPE="macos"
+        print_info "检测到 macOS 系统"
+    elif [[ -f /etc/os-release ]]; then
+        . /etc/os-release
+        OS_NAME=$NAME
+        OS_TYPE="linux"
+        print_info "检测到 Linux 系统: $OS_NAME"
+    else
+        print_error "无法检测操作系统类型"
+        exit 1
+    fi
+}
+
+# 配置变量
+setup_variables() {
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        PROJECT_NAME="easemob-doc-mcp"
+        PROJECT_DIR="$HOME/Library/Application Support/$PROJECT_NAME"
+        LAUNCHD_PLIST_PATH="$HOME/Library/LaunchAgents/com.easemob.doc-mcp.plist"
+    else
+        PROJECT_NAME="easemob-doc-mcp"
+        PROJECT_DIR="/opt/$PROJECT_NAME"
+    fi
+}
+
 echo -e "${RED}"
 echo "=========================================="
 echo "  环信文档搜索 MCP 服务卸载脚本"
 echo "=========================================="
 echo -e "${NC}"
 
+# 检测操作系统并设置变量
+detect_os
+setup_variables
+
 print_info "传输协议: $TRANSPORT"
 if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
     print_info "主机: $HOST"
     print_info "端口: $PORT"
-    print_info "路径: $PATH"
+    print_info "路径: $MCP_PATH"
 fi
 
 print_warning "此操作将完全移除环信文档搜索 MCP 服务"
@@ -125,44 +153,78 @@ fi
 
 # 停止并禁用服务
 print_info "停止服务..."
-if sudo systemctl is-active --quiet easemob-doc-mcp; then
-    sudo systemctl stop easemob-doc-mcp
-    print_success "服务已停止"
+
+if [[ "$OS_TYPE" == "macos" ]]; then
+    # macOS: 停止并卸载 LaunchAgent
+    if launchctl list | grep -q "com.easemob.doc-mcp"; then
+        launchctl stop com.easemob.doc-mcp
+        launchctl unload -w "$LAUNCHD_PLIST_PATH" 2>/dev/null || true
+        print_success "服务已停止"
+    else
+        print_info "服务未运行"
+    fi
+    
+    # 删除 LaunchAgent 配置文件
+    print_info "删除服务配置文件..."
+    if [[ -f "$LAUNCHD_PLIST_PATH" ]]; then
+        rm -f "$LAUNCHD_PLIST_PATH"
+        print_success "服务配置文件已删除"
+    else
+        print_info "服务配置文件不存在"
+    fi
 else
-    print_info "服务未运行"
+    # Linux: 停止并禁用 systemd 服务
+    if sudo systemctl is-active --quiet easemob-doc-mcp; then
+        sudo systemctl stop easemob-doc-mcp
+        print_success "服务已停止"
+    else
+        print_info "服务未运行"
+    fi
+    
+    # 禁用服务
+    print_info "禁用服务..."
+    sudo systemctl disable easemob-doc-mcp 2>/dev/null || true
+    
+    # 删除服务文件
+    print_info "删除服务文件..."
+    sudo rm -f /etc/systemd/system/easemob-doc-mcp.service
+    sudo systemctl daemon-reload
+    
+    # 清理日志
+    print_info "清理日志..."
+    sudo journalctl --vacuum-time=1s --unit=easemob-doc-mcp 2>/dev/null || true
 fi
-
-# 禁用服务
-print_info "禁用服务..."
-sudo systemctl disable easemob-doc-mcp 2>/dev/null || true
-
-# 删除服务文件
-print_info "删除服务文件..."
-sudo rm -f /etc/systemd/system/easemob-doc-mcp.service
-sudo systemctl daemon-reload
 
 # 删除项目目录
 print_info "删除项目目录..."
 if [[ -d "$PROJECT_DIR" ]]; then
-    sudo rm -rf $PROJECT_DIR
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        rm -rf "$PROJECT_DIR"
+    else
+        sudo rm -rf "$PROJECT_DIR"
+    fi
     print_success "项目目录已删除"
 else
     print_info "项目目录不存在"
 fi
 
-# 清理日志
-print_info "清理日志..."
-sudo journalctl --vacuum-time=1s --unit=easemob-doc-mcp 2>/dev/null || true
-
 # 检查端口是否还在使用（仅对http和sse传输）
 if [[ "$TRANSPORT" =~ ^(http|sse)$ ]]; then
     print_info "检查端口 $PORT 状态..."
-    if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
-        print_warning "端口 $PORT 仍被占用，可能需要手动检查"
+    if [[ "$OS_TYPE" == "macos" ]]; then
+        if lsof -i :$PORT &>/dev/null; then
+            print_warning "端口 $PORT 仍被占用，可能需要手动检查"
+        else
+            print_success "端口 $PORT 已释放"
+        fi
     else
-        print_success "端口 $PORT 已释放"
+        if netstat -tuln 2>/dev/null | grep -q ":$PORT "; then
+            print_warning "端口 $PORT 仍被占用，可能需要手动检查"
+        else
+            print_success "端口 $PORT 已释放"
+        fi
     fi
 fi
 
 print_success "=== 卸载完成 ==="
-print_info "环信文档搜索 MCP 服务已完全移除" 
+print_info "环信文档搜索 MCP 服务已完全移除"
