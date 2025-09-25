@@ -355,6 +355,9 @@ async def get_document_content(
                 with open(fullPath, 'r', encoding='utf-8') as f:
                     content = f.read()
                 
+                # 移除制表符，减少返回数据量
+                content = content.replace('\t', '')
+                
                 # 初始化当前文档的匹配结果
                 matches = []
                 
@@ -363,16 +366,19 @@ async def get_document_content(
                     lines = content.split('\n')
                     
                     for i, line in enumerate(lines):
-                        if keyword.lower() in line.lower():
+                        # 移除行中的制表符
+                        line_no_tabs = line.replace('\t', '')
+                        if keyword.lower() in line_no_tabs.lower():
                             # 提取匹配行的上下文（前后各2行）
                             startLine = max(0, i - 2)
                             endLine = min(len(lines) - 1, i + 2)
                             
-                            context = '\n'.join(lines[startLine:endLine + 1])
+                            # 确保上下文中也移除了制表符
+                            context = '\n'.join([lines[j].replace('\t', '') for j in range(startLine, endLine + 1)])
                             matches.append({
                                 "lineNumber": i + 1,
                                 "context": context,
-                                "line": line
+                                "line": line_no_tabs
                             })
                 
                 # 添加当前文档的结果
