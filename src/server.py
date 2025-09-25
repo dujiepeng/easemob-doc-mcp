@@ -73,18 +73,29 @@ async def search_platform_docs(
                 "error": f"无效的文档类型: {doc_type}，必须为 'sdk'、'uikit' 或 'callkit'"
             }
             
-        # 平台名称映射字典
-        platform_mapping = {
-            "小程序": "applet",
-            "uni-app": "applet",
-            "鸿蒙": "harmonyos",
-            "rn": "react-native",
-            "rest": "server-side"
-        }
-        
         # 确保平台名是小写的，以便统一比较
         lowercasePlatform = platform.lower()
         doc_type = doc_type.lower()
+        
+        # 平台名称映射字典 - 根据文档类型选择不同的映射
+        if doc_type == "uikit":
+            # UIKit 特定映射
+            platform_mapping = {
+                "小程序": "applet",
+                "uni-app": "uniapp",  # UIKit中uni-app映射为uniapp
+                "鸿蒙": "harmonyos",
+                "rn": "react-native",
+                "rest": "server-side"
+            }
+        else:
+            # SDK和CallKit的映射
+            platform_mapping = {
+                "小程序": "applet",
+                "uni-app": "applet",
+                "鸿蒙": "harmonyos",
+                "rn": "react-native",
+                "rest": "server-side"
+            }
         
         # 检查是否需要映射
         for key, value in platform_mapping.items():
