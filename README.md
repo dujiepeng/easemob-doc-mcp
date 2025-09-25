@@ -49,6 +49,7 @@ bash <(curl -s -L https://raw.githubusercontent.com/dujiepeng/easemob-doc-mcp/ma
 - 支持多种传输模式（HTTP、stdio、SSE）
 - 支持定期自动更新文档
 - 支持 Linux 和 macOS 系统一键部署
+- 支持 Docker 跨平台部署（Linux、macOS、Windows）
 
 ## 安装
 
@@ -183,7 +184,24 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
 
 ### 方案2：使用 Docker 部署
 
-1. 构建并启动容器：
+Docker 部署支持 Linux、macOS 和 Windows 系统，是跨平台部署的最佳选择。
+
+#### 前提条件
+
+确保您的系统已安装 Docker 和 Docker Compose：
+
+- [安装 Docker](https://docs.docker.com/get-docker/)
+- [安装 Docker Compose](https://docs.docker.com/compose/install/)
+
+#### 部署步骤
+
+1. 克隆仓库（如果尚未克隆）：
+   ```bash
+   git clone https://github.com/dujiepeng/easemob-doc-mcp.git
+   cd easemob-doc-mcp
+   ```
+
+2. 构建并启动容器：
    ```bash
    docker-compose up -d
    ```
@@ -194,20 +212,66 @@ stdio 传输模式是最适合本地开发和调试的方式，它不需要开�
      - "9000:9000"  # 主机端口:容器端口
    ```
 
-2. 管理容器：
+3. 验证服务是否正常运行：
    ```bash
-   # 查看容器状态
-   docker-compose ps
-   
-   # 查看日志
-   docker-compose logs -f
-   
-   # 重启服务
-   docker-compose restart
-   
-   # 停止服务
-   docker-compose down
+   curl http://localhost:9000/mcp/
    ```
+
+#### 管理 Docker 容器
+
+```bash
+# 查看容器状态
+docker-compose ps
+
+# 查看日志
+docker-compose logs -f
+
+# 重启服务
+docker-compose restart
+
+# 停止服务
+docker-compose down
+
+# 停止并删除所有相关资源（包括卷和网络）
+docker-compose down -v
+```
+
+#### 在 Cursor 中配置 Docker 部署的服务
+
+```json
+{
+  "easemob-doc-mcp": {
+    "transport": "http",
+    "url": "http://localhost:9000/mcp/",
+    "description": "环信文档搜索工具"
+  }
+}
+```
+
+#### 自定义 Docker 部署
+
+如果您需要自定义 Docker 部署，可以修改以下文件：
+
+1. **docker-compose.yml**：修改端口映射、环境变量等
+2. **Dockerfile**：修改基础镜像、安装额外依赖等
+
+例如，修改端口为8080：
+
+```yaml
+# docker-compose.yml
+services:
+  easemob-doc-mcp:
+    # ...其他配置...
+    ports:
+      - "8080:9000"  # 将容器的9000端口映射到主机的8080端口
+```
+
+然后重新部署：
+
+```bash
+docker-compose down
+docker-compose up -d
+```
 
 ### 方案3：使用 Supervisor 管理
 

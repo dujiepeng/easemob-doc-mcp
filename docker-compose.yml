@@ -13,6 +13,7 @@ services:
       # 挂载文档目录以便动态更新
       - ./document:/app/document:ro
       - ./uikit:/app/uikit:ro
+      - ./callkit:/app/callkit:ro
     healthcheck:
       test: ["CMD", "curl", "-f", "http://localhost:9000/mcp/"]
       interval: 30s
