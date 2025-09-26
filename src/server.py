@@ -6,6 +6,7 @@ from pydantic import Field
 # 导入service模块中的功能
 from service import search_platform_docs as service_search_platform_docs
 from service import get_document_content as service_get_document_content
+from service import get_document_lines as service_get_document_lines
 
 # 创建FastMCP实例
 mcp = FastMCP()
@@ -105,6 +106,41 @@ async def get_document_content(
     """
     # 调用service模块中的实现
     return service_get_document_content(doc_paths, keyword)
+
+# 定义获取文档指定行内容的函数
+@mcp.tool()
+async def get_document_lines(
+    doc_path: str = Field(
+        description="文档相对路径，例如 \"android/quickstart.md\""
+    ),
+    line_number: int = Field(
+        description="需要获取的行号（从1开始）"
+    ),
+    context_lines: int = Field(
+        default=2,
+        description="需要获取的上下文行数（默认为2）"
+    )
+) -> Dict[str, Any]:
+    """
+    获取文档中指定行号及其上下文行的内容
+    
+    参数:
+    - doc_path: 文档相对路径，例如 "android/quickstart.md"
+    - line_number: 需要获取的行号（从1开始）
+    - context_lines: 需要获取的上下文行数（默认为2）
+    
+    返回:
+    {
+        "content": str,          # 获取的内容（包含指定行及其上下文）
+        "docPath": str,          # 文档路径
+        "startLine": int,        # 返回内容的起始行号
+        "endLine": int,          # 返回内容的结束行号
+        "totalLines": int,       # 文档总行数
+        "error": str or None     # 错误信息，如果成功则为None
+    }
+    """
+    # 调用service模块中的实现
+    return service_get_document_lines(doc_path, line_number, context_lines)
 
 def main():
     """主函数，启动MCP服务器"""

@@ -269,6 +269,100 @@ def search_platform_docs(
             "error": error_msg
         }
 
+def get_document_lines(
+    doc_path: str,
+    line_number: int,
+    context_lines: int = 2
+) -> Dict[str, Any]:
+    """
+    获取文档中指定行号及其上下文行的内容
+    
+    参数:
+    - doc_path: 文档相对路径，例如 "android/quickstart.md"
+    - line_number: 需要获取的行号（从1开始）
+    - context_lines: 需要获取的上下文行数（默认为2）
+    
+    返回:
+    {
+        "content": str,          # 获取的内容（包含指定行及其上下文）
+        "docPath": str,          # 文档路径
+        "startLine": int,        # 返回内容的起始行号
+        "endLine": int,          # 返回内容的结束行号
+        "totalLines": int,       # 文档总行数
+        "error": str or None     # 错误信息，如果成功则为None
+    }
+    """
+    try:
+        # 确定文档路径
+        if doc_path.startswith("uikit/"):
+            # 处理UIKit文档
+            relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
+            fullPath = os.path.join(UIKIT_ROOT, relative_path)
+        elif doc_path.startswith("callkit/"):
+            # 处理CallKit文档
+            relative_path = doc_path[8:]  # 移除 "callkit/" 前缀
+            fullPath = os.path.join(CALLKIT_ROOT, relative_path)
+        else:
+            # 处理普通文档
+            fullPath = os.path.join(DOC_ROOT, doc_path)
+        
+        # 检查文件是否存在
+        if not os.path.exists(fullPath):
+            return {
+                "content": None,
+                "docPath": doc_path,
+                "startLine": 0,
+                "endLine": 0,
+                "totalLines": 0,
+                "error": "文档不存在"
+            }
+        
+        # 读取文件内容
+        with open(fullPath, 'r', encoding='utf-8') as f:
+            lines = f.readlines()
+        
+        # 计算文档总行数
+        total_lines = len(lines)
+        
+        # 检查行号是否有效
+        if line_number < 1 or line_number > total_lines:
+            return {
+                "content": None,
+                "docPath": doc_path,
+                "startLine": 0,
+                "endLine": 0,
+                "totalLines": total_lines,
+                "error": f"行号无效: {line_number}，文档总行数: {total_lines}"
+            }
+        
+        # 计算需要返回的行范围
+        start_line = max(1, line_number - context_lines)
+        end_line = min(total_lines, line_number + context_lines)
+        
+        # 获取指定范围的内容
+        content_lines = lines[start_line-1:end_line]
+        content = ''.join(content_lines)
+        
+        return {
+            "content": content,
+            "docPath": doc_path,
+            "startLine": start_line,
+            "endLine": end_line,
+            "totalLines": total_lines,
+            "error": None
+        }
+    except Exception as e:
+        error_msg = f"获取文档行内容失败: {str(e)}"
+        print(error_msg)
+        return {
+            "content": None,
+            "docPath": doc_path,
+            "startLine": 0,
+            "endLine": 0,
+            "totalLines": 0,
+            "error": error_msg
+        }
+
 def get_document_content(
     doc_paths: List[str],
     keyword: str = ""
@@ -371,12 +465,13 @@ def get_document_content(
                             })
                 
                 # 添加当前文档的结果
-                results.append({
-                    "content": content,
-                    "docPath": doc_path,
-                    "matches": matches,
-                    "error": None
-                })
+                if(len(matches) > 0):
+                    results.append({
+                        # "content": content,
+                        "docPath": doc_path,
+                        "matches": matches,
+                        "error": None
+                    })
                 
                 # 更新总匹配数
                 total_matches += len(matches)
@@ -405,3 +500,29 @@ def get_document_content(
             "totalMatches": 0,
             "error": error_msg
         }
+
+
+
+def main():
+    # 测试搜索文档
+    print("===== 测试搜索文档 =====")
+    file_paths = search_platform_docs("sdk", "android")
+    print(file_paths)
+    
+    # 如果找到了文档，测试获取文档内容
+    if file_paths["count"] > 0:
+        # 测试获取文档内容
+        print("\n===== 测试获取文档内容 =====")
+        doc_path = file_paths["documents"][0]
+        print(f"获取文档: {doc_path}")
+        content = get_document_content([doc_path], "初始化")
+        print(content)
+        
+        # 测试获取指定行内容
+        print("\n===== 测试获取指定行内容 =====")
+        line_result = get_document_lines(doc_path, 10, 3)
+        print(line_result)
+
+# 主入口点
+if __name__ == "__main__":
+    main()
