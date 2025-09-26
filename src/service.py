@@ -365,7 +365,7 @@ def get_document_lines(
 
 def get_document_content(
     doc_paths: List[str],
-    keyword: str = ""
+    keyword: str
 ) -> Dict[str, Any]:
     """
     获取文档内容，并根据关键字搜索相关内容
@@ -373,7 +373,7 @@ def get_document_content(
     参数:
     - doc_paths: 文档相对路径列表，例如 ["android/quickstart.md", "uikit/chatuikit/android/chatuikit_quickstart.md"]
                 如果提供单个字符串，将自动转换为列表
-    - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
+    - keyword: 搜索关键字，在文档中搜索匹配的内容，返回匹配行及其上下文
     
     返回:
     {
@@ -509,19 +509,8 @@ def main():
     file_paths = search_platform_docs("sdk", "android")
     print(file_paths)
     
-    # 如果找到了文档，测试获取文档内容
-    if file_paths["count"] > 0:
-        # 测试获取文档内容
-        print("\n===== 测试获取文档内容 =====")
-        doc_path = file_paths["documents"][0]
-        print(f"获取文档: {doc_path}")
-        content = get_document_content([doc_path], "初始化")
-        print(content)
-        
-        # 测试获取指定行内容
-        print("\n===== 测试获取指定行内容 =====")
-        line_result = get_document_lines(doc_path, 10, 3)
-        print(line_result)
+    content = get_document_content(file_paths["documents"], "初始化")
+    print(content)
 
 # 主入口点
 if __name__ == "__main__":
