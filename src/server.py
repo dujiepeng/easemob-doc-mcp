@@ -286,9 +286,9 @@ async def search_platform_docs(
 # 定义获取文档内容的函数
 @mcp.tool()
 async def get_document_content(
-    doc_paths: List[str] = Field(
+    doc_paths: Any = Field(
         default=None,
-        description="文档相对路径列表，例如 [\"android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，如果提供单个字符串，将自动转换为列表"
+        description="文档相对路径列表，例如 [\"android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，或者单个字符串路径"
     ),
     keyword: str = Field(
         default="",
@@ -300,7 +300,7 @@ async def get_document_content(
     
     参数:
     - doc_paths: 文档相对路径列表，例如 ["android/quickstart.md", "uikit/chatuikit/android/chatuikit_quickstart.md"]
-                如果提供单个字符串，将自动转换为列表
+                或者单个字符串路径，如 "android/quickstart.md"
     - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
     
     返回:
