@@ -10,13 +10,12 @@ services:
     environment:
       - PYTHONUNBUFFERED=1
     volumes:
-      # 挂载文档目录以便动态更新
-      - ./document:/app/document:ro
-      - ./uikit:/app/uikit:ro
-      - ./callkit:/app/callkit:ro
+      # 挂载当前目录到 /app，确保容器内能执行 git pull 并更新宿主机文件
+      # 同时也持久化了 indexdir 索引索引文件
+      - .:/app
     healthcheck:
-      test: ["CMD", "curl", "-f", "http://localhost:9000/mcp/"]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/mcp/" ]
       interval: 30s
       timeout: 10s
       retries: 3
-      start_period: 40s 
+      start_period: 40s
