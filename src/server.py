@@ -226,6 +226,9 @@ async def get_document_content(
         
         for doc_path in doc_paths:
             try:
+                # 记录原始路径
+                print(f"[Debug] Processing path: {doc_path}", file=sys.stderr)
+                
                 if doc_path.startswith("uikit/"):
                     full_path = UIKIT_ROOT / doc_path[6:]
                 elif doc_path.startswith("callkit/"):
@@ -234,6 +237,10 @@ async def get_document_content(
                     full_path = DOC_ROOT / doc_path[4:]
                 else:
                     full_path = DOC_ROOT / doc_path
+                
+                # 记录解析后的物理路径和是否存在
+                print(f"[Debug] Resolved full_path: {full_path} (Exists: {full_path.exists()})", file=sys.stderr)
+                print(f"[Debug] Current keyword: '{keyword}'", file=sys.stderr)
                 
                 if not full_path.exists():
                     results.append({"error": "文档不存在", "docPath": doc_path})
