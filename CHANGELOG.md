@@ -1,5 +1,12 @@
 # Changelog
 
+## [1.1.0] - 2025-12-19
+
+### 新增功能 (New Features)
+- **全文搜索引擎**: 引入 `Whoosh` 搜索引擎和 `jieba` 中文分词。
+- **智能搜索工具**: 新增 `search_knowledge_base` MCP 工具，支持自然语言查询和相关性排序。
+- **Docker 增强**: 索引在容器启动时自动构建，无需手动配置，完美支持 Docker 环境。
+
 ## [1.0.1] - 2025-12-19
 
 ### 优化 (Optimizations)
