@@ -1,9 +1,11 @@
 from fastmcp import FastMCP
 import os
 import argparse
-from typing import List, Dict, Any
+import asyncio
+from typing import List, Dict, Any, Optional
 from pathlib import Path
 from pydantic import Field
+from functools import lru_cache
 
 # 创建FastMCP实例
 mcp = FastMCP()
@@ -14,6 +16,112 @@ DOC_ROOT = Path(__file__).parent.parent / "document"
 UIKIT_ROOT = Path(__file__).parent.parent / "uikit"
 # CallKit文档目录
 CALLKIT_ROOT = Path(__file__).parent.parent / "callkit"
+
+def _read_file_content(path: str) -> str:
+    """同步读取文件内容"""
+    with open(path, 'r', encoding='utf-8') as f:
+        return f.read()
+
+@lru_cache(maxsize=128)
+def _scan_directory_docs(root_path: Path, platform: str, doc_type: str) -> tuple[List[str], List[str]]:
+    """
+    同步扫描文档目录
+    root_path: 根目录路径
+    platform: 规范化后的平台名称
+    doc_type: 文档类型 (sdk/uikit/callkit)
+    """
+    results = []
+    matched_platforms = []
+    
+    if not os.path.exists(root_path) or not os.path.isdir(root_path):
+        return results, matched_platforms
+
+    is_nested = doc_type in ["uikit", "callkit"]
+    prefix_len = len(str(root_path)) + 1
+
+    if is_nested:
+        # UIKit/CallKit 处理逻辑 (嵌套结构)
+        # 1. 查找符合条件的子模块 (如 chatuikit, chatroomuikit)
+        top_dirs = [d for d in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, d))]
+        target_subdirs = []
+        
+        if not platform:
+            target_subdirs = top_dirs
+            matched_platforms.append(doc_type)
+        else:
+            for d in top_dirs:
+                # 检查目录名是否包含平台名
+                if platform in d.lower():
+                    target_subdirs.append(d)
+                    if doc_type not in matched_platforms:
+                        matched_platforms.append(doc_type)
+                    continue
+                
+                # 检查子目录是否包含平台名
+                sub_path = os.path.join(root_path, d)
+                if os.path.exists(sub_path):
+                    sub_sub_dirs = [sd for sd in os.listdir(sub_path) if os.path.isdir(os.path.join(sub_path, sd))]
+                    for sd in sub_sub_dirs:
+                        if platform in sd.lower():
+                            target_subdirs.append(d)
+                            if doc_type not in matched_platforms:
+                                matched_platforms.append(doc_type)
+                            break
+        
+        target_subdirs = list(set(target_subdirs))
+        
+        # 2. 遍历目标子模块
+        for subdir in target_subdirs:
+            subdir_path = os.path.join(root_path, subdir)
+            for root, _, files in os.walk(subdir_path):
+                # 平台过滤
+                if platform:
+                    rel_to_subdir = os.path.relpath(root, subdir_path)
+                    if rel_to_subdir != ".":
+                        # 检查第一级目录是否匹配平台
+                        first_part = rel_to_subdir.split(os.sep)[0].lower()
+                        # 原逻辑是非常严格的相等匹配或包含匹配？
+                        # 原代码: rel_to_uikit_dir.split(os.sep)[0].lower() != lowercasePlatform
+                        # 但这里的 platform 可能已经被映射过 (如 ios, android)
+                        # 所以我们检查是否相等
+                        if first_part != platform:
+                            continue
+
+                for file in files:
+                    if file.endswith('.md'):
+                        full_path = os.path.join(root, file)
+                        # 结果格式: uikit/chatuikit/android/xxx.md
+                        rel_path = full_path[prefix_len:]
+                        results.append(f"{doc_type}/{rel_path}")
+
+        # 3. 添加根目录文件 (仅当未指定平台时)
+        if not platform:
+            for file in os.listdir(root_path):
+                if file.endswith('.md'):
+                    results.append(f"{doc_type}/{file}")
+
+    else:
+        # SDK 处理逻辑 (扁平结构: document/android/...)
+        top_dirs = [d for d in os.listdir(root_path) if os.path.isdir(os.path.join(root_path, d))]
+        target_dirs = []
+        
+        if not platform:
+            target_dirs = top_dirs
+            matched_platforms.extend(top_dirs)
+        else:
+            target_dirs = [d for d in top_dirs if platform in d.lower()]
+            matched_platforms.extend(target_dirs)
+            
+        for d in target_dirs:
+            dir_path = os.path.join(root_path, d)
+            for root, _, files in os.walk(dir_path):
+                for file in files:
+                    if file.endswith('.md'):
+                        full_path = os.path.join(root, file)
+                        rel_path = full_path[prefix_len:]
+                        results.append(rel_path)
+
+    return results, matched_platforms
 
 # 定义搜索文档的函数
 @mcp.tool()
@@ -28,43 +136,10 @@ async def search_platform_docs(
     )
 ) -> Dict[str, Any]:
     """
-    搜索特定平台的文档目录
-    
-    参数:
-    - doc_type: 文档类型，必填参数，可选值为 'sdk'、'uikit' 或 'callkit'。
-              'sdk': 搜索 document 目录下的文档
-              'uikit': 搜索 uikit 目录下的文档
-              'callkit': 搜索 callkit 目录下的文档
-    - platform: 平台名称，如 'android', 'ios', 'web', 'flutter', 'react-native', 'applet', 'server-side', 'uikit' 等。
-              支持部分匹配，例如输入 'and' 会匹配 'android'。
-              支持常用词语映射：'小程序' -> 'applet', '鸿蒙' -> 'harmonyos', 'rn' -> 'react-native', 'rest' -> 'server-side'
-              
-              当指定平台时，将只返回该平台的文档。例如：
-              - 当 doc_type='uikit' 且 platform='android' 时，只返回 uikit 下 android 目录中的文档
-              - 当 doc_type='sdk' 且 platform='ios' 时，只返回 document/ios 目录下的文档
-    
-    返回:
-    {
-        "documents": [            # 文档路径列表
-            "android/quickstart.md",
-            "android/integration.md",
-            ...
-        ],
-        "platform": "android",    # 匹配的平台名称
-        "count": 42,             # 找到的文档数量
-        "error": null            # 错误信息，成功时为null
-    }
-    
-    如果没有找到匹配的平台或发生错误，则返回:
-    {
-        "documents": [],
-        "platform": "输入的平台名",
-        "count": 0,
-        "error": "错误信息或未找到匹配平台"
-    }
+    搜索特定平台的文档目录。
+    支持异步非阻塞执行和结果缓存。
     """
     try:
-        # 验证doc_type参数
         if doc_type.lower() not in ["sdk", "uikit", "callkit"]:
             return {
                 "documents": [],
@@ -73,23 +148,21 @@ async def search_platform_docs(
                 "error": f"无效的文档类型: {doc_type}，必须为 'sdk'、'uikit' 或 'callkit'"
             }
             
-        # 确保平台名是小写的，以便统一比较
-        lowercasePlatform = platform.lower()
-        doc_type = doc_type.lower()
+        normalized_doc_type = doc_type.lower()
+        normalized_platform = platform.lower()
         
-        # 平台名称映射字典 - 根据文档类型选择不同的映射
-        if doc_type == "uikit":
-            # UIKit 特定映射
-            platform_mapping = {
+        # 平台映射
+        mapping = {}
+        if normalized_doc_type == "uikit":
+            mapping = {
                 "小程序": "applet",
-                "uni-app": "uniapp",  # UIKit中uni-app映射为uniapp
+                "uni-app": "uniapp",
                 "鸿蒙": "harmonyos",
                 "rn": "react-native",
                 "rest": "server-side"
             }
         else:
-            # SDK和CallKit的映射
-            platform_mapping = {
+            mapping = {
                 "小程序": "applet",
                 "uni-app": "applet",
                 "鸿蒙": "harmonyos",
@@ -97,182 +170,51 @@ async def search_platform_docs(
                 "rest": "server-side"
             }
         
-        # 检查是否需要映射
-        for key, value in platform_mapping.items():
-            if key.lower() in lowercasePlatform:
-                lowercasePlatform = value
+        for key, value in mapping.items():
+            if key in normalized_platform:
+                normalized_platform = value
                 break
         
-        results = []
-        matchedPlatforms = []
+        # 确定根目录
+        root_path = DOC_ROOT
+        if normalized_doc_type == "uikit":
+            root_path = UIKIT_ROOT
+        elif normalized_doc_type == "callkit":
+            root_path = CALLKIT_ROOT
+            
+        # 异步执行文件扫描（这是 CPU/IO 密集型操作，放入线程池）
+        # 使用 asyncio.to_thread (Python 3.9+)
+        documents, matched_platforms = await asyncio.to_thread(
+            _scan_directory_docs, 
+            root_path, 
+            normalized_platform, 
+            normalized_doc_type
+        )
         
-        # 如果是搜索UIKit文档
-        if doc_type == "uikit":
-            if os.path.exists(UIKIT_ROOT) and os.path.isdir(UIKIT_ROOT):
-                uikitDirs = []
-                # 获取uikit下的所有子目录（如chatuikit, chatroomuikit等）
-                for item in os.listdir(UIKIT_ROOT):
-                    itemPath = os.path.join(UIKIT_ROOT, item)
-                    if os.path.isdir(itemPath):
-                        uikitDirs.append(item)
-                
-                # 检查是否有匹配的uikit子目录
-                matchedUikitDirs = []
-                if not platform:  # 如果没有指定平台，则包含所有uikit目录
-                    matchedUikitDirs = uikitDirs
-                    matchedPlatforms.append("uikit")
-                else:
-                    # 检查uikit子目录下是否有与platform匹配的平台目录
-                    for uikitDir in uikitDirs:
-                        if lowercasePlatform in uikitDir.lower():
-                            matchedUikitDirs.append(uikitDir)
-                            if "uikit" not in matchedPlatforms:
-                                matchedPlatforms.append("uikit")
-                            continue
-                            
-                        uikitDirPath = os.path.join(UIKIT_ROOT, uikitDir)
-                        # 检查每个uikit子目录下的平台目录
-                        if os.path.isdir(uikitDirPath):
-                            platformDirs = [d for d in os.listdir(uikitDirPath) if os.path.isdir(os.path.join(uikitDirPath, d))]
-                            for platformDir in platformDirs:
-                                if lowercasePlatform and lowercasePlatform in platformDir.lower():
-                                    matchedUikitDirs.append(uikitDir)
-                                    if "uikit" not in matchedPlatforms:
-                                        matchedPlatforms.append("uikit")
-                                    break
-                
-                # 递归获取所有匹配的UIKit的Markdown文件
-                for uikitDir in matchedUikitDirs:
-                    uikitDirPath = os.path.join(UIKIT_ROOT, uikitDir)
-                    for root, _, files in os.walk(uikitDirPath):
-                        # 检查当前目录是否匹配指定的平台
-                        if platform:
-                            # 获取相对于uikitDir的路径
-                            rel_to_uikit_dir = os.path.relpath(root, uikitDirPath)
-                            # 如果不是根目录，检查第一级子目录是否匹配平台名
-                            # 例如：chatuikit/android/xxx.md 中的 "android" 是否匹配指定的平台
-                            if rel_to_uikit_dir != "." and rel_to_uikit_dir.split(os.sep)[0].lower() != lowercasePlatform:
-                                continue
-                                
-                        for file in files:
-                            if file.endswith('.md'):
-                                fullPath = os.path.join(root, file)
-                                # 转换为相对路径，添加uikit前缀
-                                relPath = os.path.relpath(fullPath, UIKIT_ROOT)
-                                results.append(f"uikit/{relPath}")
-                
-                # 包含uikit根目录下的md文件（如果没有指定平台或者是通用文档）
-                if not platform:  # 只有在不指定平台时，才包含根目录下的MD文件
-                    for file in os.listdir(UIKIT_ROOT):
-                        if file.endswith('.md'):
-                            fullPath = os.path.join(UIKIT_ROOT, file)
-                            relPath = os.path.relpath(fullPath, UIKIT_ROOT)
-                            results.append(f"uikit/{relPath}")
-        
-        # 如果是搜索CallKit文档
-        elif doc_type == "callkit":
-            if os.path.exists(CALLKIT_ROOT) and os.path.isdir(CALLKIT_ROOT):
-                callkitDirs = []
-                # 获取callkit下的所有子目录
-                for item in os.listdir(CALLKIT_ROOT):
-                    itemPath = os.path.join(CALLKIT_ROOT, item)
-                    if os.path.isdir(itemPath):
-                        callkitDirs.append(item)
-                
-                # 检查是否有匹配的callkit子目录
-                matchedCallkitDirs = []
-                if not platform:  # 如果没有指定平台，则包含所有callkit目录
-                    matchedCallkitDirs = callkitDirs
-                    matchedPlatforms.append("callkit")
-                else:
-                    # 检查callkit子目录下是否有与platform匹配的平台目录
-                    for callkitDir in callkitDirs:
-                        if lowercasePlatform in callkitDir.lower():
-                            matchedCallkitDirs.append(callkitDir)
-                            if "callkit" not in matchedPlatforms:
-                                matchedPlatforms.append("callkit")
-                            continue
-                            
-                        callkitDirPath = os.path.join(CALLKIT_ROOT, callkitDir)
-                        # 检查每个callkit子目录下的平台目录
-                        if os.path.isdir(callkitDirPath):
-                            platformDirs = [d for d in os.listdir(callkitDirPath) if os.path.isdir(os.path.join(callkitDirPath, d))]
-                            for platformDir in platformDirs:
-                                if lowercasePlatform and lowercasePlatform in platformDir.lower():
-                                    matchedCallkitDirs.append(callkitDir)
-                                    if "callkit" not in matchedPlatforms:
-                                        matchedPlatforms.append("callkit")
-                                    break
-                
-                # 递归获取所有匹配的CallKit的Markdown文件
-                for callkitDir in matchedCallkitDirs:
-                    callkitDirPath = os.path.join(CALLKIT_ROOT, callkitDir)
-                    for root, _, files in os.walk(callkitDirPath):
-                        # 检查当前目录是否匹配指定的平台
-                        if platform:
-                            # 获取相对于callkitDir的路径
-                            rel_to_callkit_dir = os.path.relpath(root, callkitDirPath)
-                            # 如果不是根目录，检查第一级子目录是否匹配平台名
-                            if rel_to_callkit_dir != "." and rel_to_callkit_dir.split(os.sep)[0].lower() != lowercasePlatform:
-                                continue
-                                
-                        for file in files:
-                            if file.endswith('.md'):
-                                fullPath = os.path.join(root, file)
-                                # 转换为相对路径，添加callkit前缀
-                                relPath = os.path.relpath(fullPath, CALLKIT_ROOT)
-                                results.append(f"callkit/{relPath}")
-                
-                # 包含callkit根目录下的md文件（如果没有指定平台或者是通用文档）
-                if not platform:  # 只有在不指定平台时，才包含根目录下的MD文件
-                    for file in os.listdir(CALLKIT_ROOT):
-                        if file.endswith('.md'):
-                            fullPath = os.path.join(CALLKIT_ROOT, file)
-                            relPath = os.path.relpath(fullPath, CALLKIT_ROOT)
-                            results.append(f"callkit/{relPath}")
-        
-        # 如果是搜索SDK文档
-        elif doc_type == "sdk":
-            # 获取所有可用的平台目录
-            if os.path.exists(DOC_ROOT) and os.path.isdir(DOC_ROOT):
-                dirs = [d for d in os.listdir(DOC_ROOT) if os.path.isdir(os.path.join(DOC_ROOT, d))]
-                
-                # 过滤匹配的平台目录
-                docMatchedPlatforms = []
-                if not platform:  # 如果没有指定平台，包含所有平台
-                    docMatchedPlatforms = dirs
-                else:
-                    docMatchedPlatforms = [d for d in dirs if lowercasePlatform in d.lower()]
-                
-                matchedPlatforms.extend(docMatchedPlatforms)
-                
-                # 收集所有匹配平台的文档
-                for platformDir in docMatchedPlatforms:
-                    platformPath = os.path.join(DOC_ROOT, platformDir)
-                    
-                    # 递归获取所有Markdown文件
-                    for root, _, files in os.walk(platformPath):
-                        for file in files:
-                            if file.endswith('.md'):
-                                fullPath = os.path.join(root, file)
-                                # 转换为相对路径
-                                relPath = os.path.relpath(fullPath, DOC_ROOT)
-                                results.append(relPath)
-        
-        if not matchedPlatforms:
-            return {
+        # 构造返回结果
+        result_platform = platform
+        if matched_platforms:
+             # 如果只有一个匹配平台，返回该平台；否则返回原始查询平台或第一个匹配项（逻辑保持原样）
+             result_platform = matched_platforms[0] if len(matched_platforms) == 1 else platform
+             if platform and platform == "":
+                  # 如果未指定平台，可能返回 generic
+                  pass
+
+        if not documents and platform:
+             return {
                 "documents": [],
                 "platform": platform,
                 "count": 0,
                 "error": f"未找到匹配平台: {platform}"
-            }
-        
+             }
+
         return {
-            "documents": results,
-            "platform": matchedPlatforms[0] if len(matchedPlatforms) == 1 else platform,
-            "count": len(results),
+            "documents": documents,
+            "platform": result_platform,
+            "count": len(documents),
             "error": None
         }
+
     except Exception as e:
         error_msg = f"搜索文档错误: {str(e)}"
         print(error_msg)
@@ -296,64 +238,29 @@ async def get_document_content(
     )
 ) -> Dict[str, Any]:
     """
-    获取文档内容，并根据关键字搜索相关内容
-    
-    参数:
-    - doc_paths: 文档相对路径列表，例如 ["android/quickstart.md", "uikit/chatuikit/android/chatuikit_quickstart.md"]
-                或者单个字符串路径，如 "android/quickstart.md"
-    - keyword: 搜索关键字（可选），如果提供则会在文档中搜索匹配的内容
-    
-    返回:
-    {
-        "documents": [           # 文档内容列表
-            {
-                "content": str or None,  # 文档的完整内容，如果文档不存在或发生错误则为None
-                "docPath": str,          # 文档路径
-                "matches": [             # 匹配结果列表，如果没有提供关键字或没有匹配则为空列表
-                    {
-                        "lineNumber": int,  # 匹配行的行号（从1开始）
-                        "context": str,     # 匹配行的上下文（包括前后各2行）
-                        "line": str         # 匹配的具体行内容
-                    },
-                    ...
-                ],
-                "error": str or None     # 错误信息，如果成功则为None
-            },
-            ...
-        ],
-        "totalMatches": int,     # 所有文档中匹配的总数
-        "error": str or None     # 整体错误信息，如果成功则为None
-    }
+    获取文档内容，并根据关键字搜索相关内容。
+    使用异步 I/O 提高并发性能。
     """
     try:
-        # 处理输入参数
         if doc_paths is None:
             doc_paths = []
         elif isinstance(doc_paths, str):
             doc_paths = [doc_paths]
         
-        # 初始化结果
         results = []
         total_matches = 0
         
-        # 处理每个文档路径
         for doc_path in doc_paths:
             try:
-                # 确定文档路径
+                # 确定完整路径
                 if doc_path.startswith("uikit/"):
-                    # 处理UIKit文档
-                    relative_path = doc_path[6:]  # 移除 "uikit/" 前缀
-                    fullPath = os.path.join(UIKIT_ROOT, relative_path)
+                    full_path = UIKIT_ROOT / doc_path[6:]
                 elif doc_path.startswith("callkit/"):
-                    # 处理CallKit文档
-                    relative_path = doc_path[8:]  # 移除 "callkit/" 前缀
-                    fullPath = os.path.join(CALLKIT_ROOT, relative_path)
+                    full_path = CALLKIT_ROOT / doc_path[8:]
                 else:
-                    # 处理普通文档
-                    fullPath = os.path.join(DOC_ROOT, doc_path)
+                    full_path = DOC_ROOT / doc_path
                 
-                # 检查文件是否存在
-                if not os.path.exists(fullPath):
+                if not full_path.exists():
                     results.append({
                         "content": None, 
                         "docPath": doc_path,
@@ -362,50 +269,40 @@ async def get_document_content(
                     })
                     continue
                 
-                # 读取文件内容
-                with open(fullPath, 'r', encoding='utf-8') as f:
-                    content = f.read()
+                # 异步读取文件
+                content = await asyncio.to_thread(_read_file_content, str(full_path))
                 
-                # 移除制表符，减少返回数据量
+                # 处理内容
                 content = content.replace('\t', '')
-                
-                # 初始化当前文档的匹配结果
                 matches = []
                 
-                # 如果有关键字，进行搜索
                 if keyword and keyword.strip() != "":
                     lines = content.split('\n')
+                    keyword_lower = keyword.lower()
                     
                     for i, line in enumerate(lines):
-                        # 移除行中的制表符
                         line_no_tabs = line.replace('\t', '')
-                        if keyword.lower() in line_no_tabs.lower():
-                            # 提取匹配行的上下文（前后各2行）
-                            startLine = max(0, i - 2)
-                            endLine = min(len(lines) - 1, i + 2)
-                            
-                            # 确保上下文中也移除了制表符
-                            context = '\n'.join([lines[j].replace('\t', '') for j in range(startLine, endLine + 1)])
+                        if keyword_lower in line_no_tabs.lower():
+                            start_line = max(0, i - 2)
+                            end_line = min(len(lines) - 1, i + 2)
+                            context = '\n'.join([lines[j].replace('\t', '') for j in range(start_line, end_line + 1)])
                             matches.append({
                                 "lineNumber": i + 1,
                                 "context": context,
                                 "line": line_no_tabs
                             })
                 
-                # 添加当前文档的结果
                 results.append({
                     "content": content,
                     "docPath": doc_path,
                     "matches": matches,
                     "error": None
                 })
-                
-                # 更新总匹配数
                 total_matches += len(matches)
                 
             except Exception as e:
                 error_msg = f"获取文档 {doc_path} 内容失败: {str(e)}"
-                print(f"获取文档内容错误: {str(e)}")
+                print(error_msg)
                 results.append({
                     "content": None, 
                     "docPath": doc_path,
@@ -413,7 +310,6 @@ async def get_document_content(
                     "error": error_msg
                 })
         
-        # 返回所有文档的结果
         return {
             "documents": results,
             "totalMatches": total_matches,
@@ -430,59 +326,26 @@ async def get_document_content(
 
 def main():
     """主函数，启动MCP服务器"""
-    # 解析命令行参数
     parser = argparse.ArgumentParser(description="环信文档搜索 MCP 服务")
-    parser.add_argument(
-        "--transport", "-t",
-        choices=["stdio", "http", "sse"],
-        default="http",
-        help="传输协议 (默认: http)"
-    )
-    parser.add_argument(
-        "--host",
-        default="0.0.0.0",
-        help="HTTP传输时绑定的主机 (默认: 0.0.0.0)"
-    )
-    parser.add_argument(
-        "--port", "-p",
-        type=int,
-        default=443,
-        help="HTTP传输时绑定的端口 (默认: 443)"
-    )
-    parser.add_argument(
-        "--path",
-        default="/mcp/",
-        help="HTTP传输时绑定的路径 (默认: /mcp/)"
-    )
+    parser.add_argument("--transport", "-t", choices=["stdio", "http", "sse"], default="http", help="传输协议 (默认: http)")
+    parser.add_argument("--host", default="0.0.0.0", help="HTTP传输时绑定的主机 (默认: 0.0.0.0)")
+    parser.add_argument("--port", "-p", type=int, default=443, help="HTTP传输时绑定的端口 (默认: 443)")
+    parser.add_argument("--path", default="/mcp/", help="HTTP传输时绑定的路径 (默认: /mcp/)")
     
     args = parser.parse_args()
     
-    print(f"启动环信文档搜索MCP服务器")
+    print(f"启动环信文档搜索MCP服务器 (已优化)")
     print(f"传输协议: {args.transport}")
+    
     if args.transport in ["http", "sse"]:
-        print(f"主机: {args.host}")
-        print(f"端口: {args.port}")
-        print(f"路径: {args.path}")
         print(f"服务地址: http://{args.host}:{args.port}{args.path}")
     
-    # 根据传输协议启动服务器
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
-        mcp.run(
-            transport="sse",
-            host=args.host,
-            port=args.port,
-            path=args.path
-        )
-    else:  # http
-        mcp.run(
-            transport="http",
-            host=args.host,
-            port=args.port,
-            path=args.path
-        )
+        mcp.run(transport="sse", host=args.host, port=args.port, path=args.path)
+    else:
+        mcp.run(transport="http", host=args.host, port=args.port, path=args.path)
 
-# 主入口点
 if __name__ == "__main__":
     main()
