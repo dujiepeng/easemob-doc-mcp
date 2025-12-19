@@ -45,3 +45,7 @@ venv.bak/
 document/
 uikit/
 callkit/
+
+# Search Index
+indexdir/
+log.txt

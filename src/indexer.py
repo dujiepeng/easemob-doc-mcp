@@ -8,7 +8,7 @@ from whoosh.index import create_in, open_dir, exists_in
 from whoosh.fields import Schema, TEXT, ID, STORED
 from whoosh.qparser import QueryParser
 from whoosh.analysis import Tokenizer, Token, Analyzer
-from whoosh.highlight import Highilighter, ContextFragmenter
+from whoosh.highlight import Highlighter, ContextFragmenter
 
 # 自定义 Jieba 分词器适配 Whoosh
 class JiebaTokenizer(Tokenizer):
@@ -134,8 +134,13 @@ class DocIndexer:
 # 全局索引器实例
 global_indexer = DocIndexer()
 
-async def build_index_async(doc_root: Path, uikit_root: Path, callkit_root: Path):
+async def build_index_async(doc_root: Path, uikit_root: Path, callkit_root: Path, rebuild: bool = True):
     """异步构建索引"""
+    if not rebuild and exists_in(global_indexer.index_dir):
+        print(f"索引已存在于 {global_indexer.index_dir}，跳过构建。")
+        global_indexer.initialize_index(rebuild=False)
+        return
+
     print("开始构建全文索引...")
     
     # 在线程中运行 CPU 密集型任务

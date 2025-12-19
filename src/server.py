@@ -6,7 +6,13 @@ from typing import List, Dict, Any, Optional
 from pathlib import Path
 from pydantic import Field
 from functools import lru_cache
-from .indexer import global_indexer, build_index_async  # 导入索引模块
+try:
+    from .indexer import global_indexer, build_index_async
+except ImportError:
+    try:
+        from src.indexer import global_indexer, build_index_async
+    except ImportError:
+        from indexer import global_indexer, build_index_async
 
 # 创建FastMCP实例
 mcp = FastMCP()
@@ -259,7 +265,9 @@ def main():
     
     print("正在初始化搜索引擎...")
     try:
-        asyncio.run(build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT))
+        # 生产环境通常建议每次重建以保证数据一致性，但可以通过参数控制
+        # 这里默认重建 (rebuild=True)
+        asyncio.run(build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True))
     except Exception as e:
         print(f"索引构建失败: {e}")
         print("服务将继续运行，但搜索功能可能不可用。")
