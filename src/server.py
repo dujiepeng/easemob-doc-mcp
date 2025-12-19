@@ -268,6 +268,57 @@ def main():
         # 生产环境通常建议每次重建以保证数据一致性，但可以通过参数控制
         # 这里默认重建 (rebuild=True)
         asyncio.run(build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True))
+        
+        # 启动后台定时更新任务
+        async def scheduled_update():
+            while True:
+                # 每天更新一次 (24 * 3600 秒)
+                # 为了便于测试，可以通过环境变量设置间隔，默认 86400 秒
+                try:
+                    update_interval = int(os.environ.get("DOC_UPDATE_INTERVAL_SECONDS", 86400))
+                    print(f"下次文档更新将在 {update_interval} 秒后执行...")
+                    await asyncio.sleep(update_interval)
+                    
+                    print("⏰ 开始执行定时更新...")
+                    # 1. 执行 git pull
+                    process = await asyncio.create_subprocess_shell(
+                        "git pull",
+                        stdout=asyncio.subprocess.PIPE,
+                        stderr=asyncio.subprocess.PIPE
+                    )
+                    stdout, stderr = await process.communicate()
+                    
+                    if process.returncode == 0:
+                        print(f"✅ Git Pull 成功:\n{stdout.decode().strip()}")
+                        # 2. 如果有更新，重建索引并清理缓存
+                        if "Already up to date" not in stdout.decode():
+                            print("文档有变动，正在重建索引并清理缓存...")
+                            # 清理目录扫描缓存
+                            _scan_directory_docs.cache_clear()
+                            await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
+                        else:
+                            print("文档无变动，跳过索引重建。")
+                    else:
+                        print(f"❌ Git Pull 失败:\n{stderr.decode().strip()}")
+                        
+                except Exception as e:
+                    print(f"定时更新任务出错: {e}")
+                    await asyncio.sleep(60) # 出错后等待 1 分钟重试
+
+        # 在后台启动任务，不阻塞主线程
+        import threading
+        def run_schedule():
+            asyncio.run(scheduled_update())
+        
+        # 注意: mcp.run() 是阻塞的，所以这里用简单的线程或者在 mcp 内部机制中启动
+        # FastMCP 目前可以直接运行，我们把 asyncio task 放到事件循环里最好
+        # 但由于 mcp.run() 会接管循环，我们这里用一个简化的方式：
+        # 创建一个线程来运行这个独立的 loop (虽然不是最佳实践，但对简单任务有效)
+        # 或者，如果 FastMCP 暴露了 startup hook 更好。
+        # 鉴于 FastMCP 封装较深，我们简单地用 threading 启动这个 loop
+        t = threading.Thread(target=run_schedule, daemon=True)
+        t.start()
+        
     except Exception as e:
         print(f"索引构建失败: {e}")
         print("服务将继续运行，但搜索功能可能不可用。")
