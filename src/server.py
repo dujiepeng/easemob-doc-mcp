@@ -1,11 +1,13 @@
 from fastmcp import FastMCP
 import os
+import sys
 import argparse
 import asyncio
-from typing import List, Dict, Any, Optional
+from typing import List, Dict, Any, Union
 from pathlib import Path
 from pydantic import Field
-from functools import lru_cache
+from functools import lru_cache, wraps
+import json
 try:
     from .indexer import global_indexer, build_index_async
 except ImportError:
@@ -16,6 +18,32 @@ except ImportError:
 
 # 创建FastMCP实例
 mcp = FastMCP()
+
+# --- 日志系统 ---
+def log_tool_call(func):
+    """工具调用日志装饰器，输出到 stderr 以免干扰 stdio 传输"""
+    @wraps(func)
+    async def wrapper(*args, **kwargs):
+        tool_name = func.__name__
+        # 打印请求
+        print(f"\n[Tool Request: {tool_name}]", file=sys.stderr)
+        print(f"Args: {json.dumps(kwargs, ensure_ascii=False, indent=2)}", file=sys.stderr)
+        
+        try:
+            result = await func(*args, **kwargs)
+            # 打印响应摘要
+            print(f"[Tool Response: {tool_name}] Success", file=sys.stderr)
+            # 如果结果太长，只打印关键信息
+            res_str = json.dumps(result, ensure_ascii=False)
+            if len(res_str) > 500:
+                print(f"Result (truncated): {res_str[:500]}...", file=sys.stderr)
+            else:
+                print(f"Result: {res_str}", file=sys.stderr)
+            return result
+        except Exception as e:
+            print(f"[Tool Response: {tool_name}] Failed: {e}", file=sys.stderr)
+            raise e
+    return wrapper
 
 # 文档根目录
 DOC_ROOT = Path(__file__).parent.parent / "document"
@@ -114,6 +142,7 @@ def _scan_directory_docs(root_path: Path, platform: str, doc_type: str) -> tuple
     return results, matched_platforms
 
 @mcp.tool()
+@log_tool_call
 async def search_platform_docs(
     doc_type: str = Field(
         default="sdk",
@@ -174,9 +203,12 @@ async def search_platform_docs(
         return {"documents": [], "error": f"搜索文档错误: {str(e)}"}
 
 @mcp.tool()
+@log_tool_call
 async def get_document_content(
-    doc_paths: Any = Field(default=None, description="文档相对路径列表"),
-    keyword: str = Field(default="", description="搜索关键字")
+    doc_paths: Union[str, List[str]] = Field(
+        default=None,
+        description="文档相对路径列表，例如 [\"android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，或者单个字符串路径"
+    ),
 ) -> Dict[str, Any]:
     """获取文档内容"""
     try:
@@ -235,6 +267,7 @@ async def get_document_content(
         return {"error": str(e)}
 
 @mcp.tool()
+@log_tool_call
 async def search_knowledge_base(
     query: str = Field(description="自然语言搜索查询，例如 '如何集成环信 IM' 或 'login error'"),
     doc_type: str = Field(default=None, description="可选，过滤文档类型: 'sdk', 'uikit', 'callkit'"),
@@ -263,7 +296,7 @@ def main():
     # 所以我们在 main 中先运行一次索引构建（同步阻塞方式，或者 fire-and-forget）
     # 为了简单起见，我们使用 asyncio.run 来执行索引构建，然后再启动 MCP
     
-    print("正在初始化搜索引擎...")
+    print("正在初始化搜索引擎...", file=sys.stderr)
     try:
         # 生产环境通常建议每次重建以保证数据一致性，但可以通过参数控制
         # 这里默认重建 (rebuild=True)
@@ -276,10 +309,10 @@ def main():
                 # 为了便于测试，可以通过环境变量设置间隔，默认 86400 秒
                 try:
                     update_interval = int(os.environ.get("DOC_UPDATE_INTERVAL_SECONDS", 86400))
-                    print(f"下次文档更新将在 {update_interval} 秒后执行...")
+                    print(f"下次文档更新将在 {update_interval} 秒后执行...", file=sys.stderr)
                     await asyncio.sleep(update_interval)
                     
-                    print("⏰ 开始执行定时更新...")
+                    print("⏰ 开始执行定时更新...", file=sys.stderr)
                     # 1. 执行 git pull
                     process = await asyncio.create_subprocess_shell(
                         "git pull",
@@ -289,20 +322,20 @@ def main():
                     stdout, stderr = await process.communicate()
                     
                     if process.returncode == 0:
-                        print(f"✅ Git Pull 成功:\n{stdout.decode().strip()}")
+                        print(f"✅ Git Pull 成功:\n{stdout.decode().strip()}", file=sys.stderr)
                         # 2. 如果有更新，重建索引并清理缓存
                         if "Already up to date" not in stdout.decode():
-                            print("文档有变动，正在重建索引并清理缓存...")
+                            print("文档有变动，正在重建索引并清理缓存...", file=sys.stderr)
                             # 清理目录扫描缓存
                             _scan_directory_docs.cache_clear()
                             await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
                         else:
-                            print("文档无变动，跳过索引重建。")
+                            print("文档无变动，跳过索引重建。", file=sys.stderr)
                     else:
-                        print(f"❌ Git Pull 失败:\n{stderr.decode().strip()}")
+                        print(f"❌ Git Pull 失败:\n{stderr.decode().strip()}", file=sys.stderr)
                         
                 except Exception as e:
-                    print(f"定时更新任务出错: {e}")
+                    print(f"定时更新任务出错: {e}", file=sys.stderr)
                     await asyncio.sleep(60) # 出错后等待 1 分钟重试
 
         # 在后台启动任务，不阻塞主线程
@@ -320,10 +353,10 @@ def main():
         t.start()
         
     except Exception as e:
-        print(f"索引构建失败: {e}")
-        print("服务将继续运行，但搜索功能可能不可用。")
+        print(f"索引构建失败: {e}", file=sys.stderr)
+        print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.0 - Full Text Search)")
+    print(f"启动环信文档搜索MCP服务器 (v1.1.0 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":

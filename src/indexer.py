@@ -9,6 +9,7 @@ from whoosh.fields import Schema, TEXT, ID, STORED
 from whoosh.qparser import QueryParser
 from whoosh.analysis import Tokenizer, Token, Analyzer
 from whoosh.highlight import Highlighter, ContextFragmenter
+import sys
 
 # 自定义 Jieba 分词器适配 Whoosh
 class JiebaTokenizer(Tokenizer):
@@ -88,18 +89,13 @@ class DocIndexer:
             # query = parser.parse(query_str) 
             # 简单起见，我们主要搜 content，也可以用 MultifieldParser
             
-            from whoosh.qparser import MultifieldParser
-            parser = MultifieldParser(["title", "content"], schema=self.ix.schema)
+            from whoosh.qparser import MultifieldParser, OrGroup
+            # 使用 OrGroup 让搜索更宽容，只要匹配其中一个词就能返回结果，提高召回率
+            parser = MultifieldParser(["title", "content"], schema=self.ix.schema, group=OrGroup)
             query = parser.parse(query_str)
 
-            # 过滤逻辑 (Whoosh 过滤比较麻烦，这里先搜索后过滤，或者构造组合查询)
-            # 为了简单和性能，如果指定了 platform/doc_type，应该作为 Filter 传入
-            filter_query = None
-            # 注意：Whoosh 的 filter 需要 Query 对象，这里简化处理，先只做文本搜索
-            # 如果需要精确过滤，可以使用 Term 查询组合
-            
-            # 使用 searcher 搜索
-            results = searcher.search(query, limit=limit if not (doc_type or platform) else limit * 5) # 稍微多取一点以便过滤
+            # 使用 searcher 搜索，深度加大到 50 以确保过滤后仍有结果
+            results = searcher.search(query, limit=50) 
 
             # 设置高亮
             results.fragmenter = ContextFragmenter(maxchars=100, surround=30)
@@ -137,11 +133,11 @@ global_indexer = DocIndexer()
 async def build_index_async(doc_root: Path, uikit_root: Path, callkit_root: Path, rebuild: bool = True):
     """异步构建索引"""
     if not rebuild and exists_in(global_indexer.index_dir):
-        print(f"索引已存在于 {global_indexer.index_dir}，跳过构建。")
+        print(f"索引已存在于 {global_indexer.index_dir}，跳过构建。", file=sys.stderr)
         global_indexer.initialize_index(rebuild=False)
         return
 
-    print("开始构建全文索引...")
+    print("开始构建全文索引...", file=sys.stderr)
     
     # 在线程中运行 CPU 密集型任务
     await asyncio.to_thread(global_indexer.initialize_index, rebuild=True)
@@ -200,13 +196,13 @@ async def build_index_async(doc_root: Path, uikit_root: Path, callkit_root: Path
                             "doc_type": doc_type
                         })
                     except Exception as e:
-                        print(f"Skipping {full_path}: {e}")
+                        print(f"Skipping {full_path}: {e}", file=sys.stderr)
 
     # 收集文档 (依然在线程中执行以避免阻塞)
     await asyncio.to_thread(_read_and_collect, doc_root, "sdk")
     await asyncio.to_thread(_read_and_collect, uikit_root, "uikit")
     await asyncio.to_thread(_read_and_collect, callkit_root, "callkit")
     
-    print(f"扫描到 {len(documents)} 个文档，正在写入索引...")
+    print(f"扫描到 {len(documents)} 个文档，正在写入索引...", file=sys.stderr)
     await asyncio.to_thread(global_indexer.add_documents, documents)
-    print("全文索引构建完成!")
+    print("全文索引构建完成!", file=sys.stderr)
