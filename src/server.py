@@ -243,7 +243,15 @@ async def get_document_content(
                 print(f"[Debug] Current keyword: '{keyword}'", file=sys.stderr)
                 
                 if not full_path.exists():
-                    results.append({"error": "文档不存在", "docPath": doc_path})
+                    results.append({
+                        "error": "文档不存在", 
+                        "docPath": doc_path,
+                        "debug_info": {
+                            "resolved_path": str(full_path),
+                            "original_path": doc_path,
+                            "exists": False
+                        }
+                    })
                     continue
                 
                 content = await asyncio.to_thread(_read_file_content, str(full_path))
@@ -268,7 +276,12 @@ async def get_document_content(
                 results.append({
                     "content": content,
                     "docPath": doc_path,
-                    "matches": matches
+                    "matches": matches,
+                    "_debug_info": {
+                        "resolved_path": str(full_path),
+                        "original_path": doc_path,
+                        "keyword_received": keyword
+                    }
                 })
                 total_matches += len(matches)
                 
@@ -369,7 +382,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.0 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.1 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":

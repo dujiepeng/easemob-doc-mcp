@@ -1,12 +1,15 @@
-FROM python:3.11-slim
+FROM python:3.11-slim-bookworm
 
 # 设置工作目录
 WORKDIR /app
 
 # 安装系统依赖
-RUN apt-get update && apt-get install -y \
+# 替换为阿里云镜像源 (Debian Bookworm)
+RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+    && apt-get update && apt-get install -y \
     gcc \
     git \
+    curl \
     && rm -rf /var/lib/apt/lists/*
 
 # 复制项目文件
@@ -17,8 +20,8 @@ COPY uikit/ ./uikit/
 COPY callkit/ ./callkit/
 COPY pyproject.toml .
 
-# 安装Python依赖
-RUN pip install --no-cache-dir -r requirements.txt
+# 安装Python依赖 (使用清华源加速)
+RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
 # 创建非root用户
 RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
