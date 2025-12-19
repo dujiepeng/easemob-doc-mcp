@@ -207,8 +207,12 @@ async def search_platform_docs(
 async def get_document_content(
     doc_paths: Union[str, List[str]] = Field(
         default=None,
-        description="文档相对路径列表，例如 [\"android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，或者单个字符串路径"
+        description="文档相对路径列表，例如 [\"sdk/android/quickstart.md\", \"uikit/chatuikit/android/chatuikit_quickstart.md\"]，或者单个字符串路径"
     ),
+    keyword: str = Field(
+        default="",
+        description="可选，用于在返回的文档内容中进行关键词定位（返回上下文）"
+    )
 ) -> Dict[str, Any]:
     """获取文档内容"""
     try:
@@ -226,6 +230,8 @@ async def get_document_content(
                     full_path = UIKIT_ROOT / doc_path[6:]
                 elif doc_path.startswith("callkit/"):
                     full_path = CALLKIT_ROOT / doc_path[8:]
+                elif doc_path.startswith("sdk/"):
+                    full_path = DOC_ROOT / doc_path[4:]
                 else:
                     full_path = DOC_ROOT / doc_path
                 
