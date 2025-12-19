@@ -4,8 +4,8 @@ FROM python:3.11-slim-bookworm
 WORKDIR /app
 
 # 安装系统依赖
-# 替换为阿里云镜像源 (Debian Bookworm)
-RUN sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's/deb.debian.org/mirrors.aliyun.com/g' /etc/apt/sources.list \
+# 替换为清华大学镜像源 (Debian Bookworm)
+RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list.d/debian.sources 2>/dev/null || sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.list \
     && apt-get update && apt-get install -y \
     gcc \
     git \
