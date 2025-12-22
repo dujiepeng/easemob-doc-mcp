@@ -102,7 +102,7 @@ async def sync_all_docs(force_index: bool = False):
         
         # 4. 如果有更新，重建索引并清理缓存
         if any_updated:
-            print("🔍 文档有更新，重建索引并清理缓存...", file=sys.stderr)
+            print("🔍 文档有变动或强制更新，重建索引并清理缓存...", file=sys.stderr)
             _scan_directory_docs.cache_clear()
             await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
         else:
@@ -114,6 +114,23 @@ async def sync_all_docs(force_index: bool = False):
         # 5. 清理临时目录
         if TEMP_DIR.exists():
             await asyncio.to_thread(shutil.rmtree, str(TEMP_DIR))
+
+async def ensure_docs_ready():
+    """启动时检查文档是否就绪，若缺失则立即同步"""
+    print("📋 检查本地文档完整性...", file=sys.stderr)
+    folders = [DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT]
+    missing = any(not (f.exists() and any(f.iterdir())) for f in folders)
+    
+    if missing:
+        print("⚠️ 检测到关键文档缺失，正在启动紧急同步...", file=sys.stderr)
+        await sync_all_docs(force_index=True)
+    else:
+        print("✅ 本地文档已就绪。", file=sys.stderr)
+        # 即使文档在，也要确保索引存在
+        from indexer import exists_in
+        if not exists_in(global_indexer.index_dir):
+            print("🔍 索引缺失，正在后台构建索引...", file=sys.stderr)
+            await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
 
 def _read_file_content(path: str) -> str:
     """同步读取文件内容"""
@@ -365,10 +382,10 @@ def main():
     # 所以我们在 main 中先运行一次索引构建（同步阻塞方式，或者 fire-and-forget）
     # 为了简单起见，我们使用 asyncio.run 来执行索引构建，然后再启动 MCP
     
-    print("正在初始化文档与搜索引擎...", file=sys.stderr)
+    print("正在加载环信文档 MCP 服务...", file=sys.stderr)
     try:
-        # 1. 首先确保文档存在（启动时立即拉取一次）
-        asyncio.run(sync_all_docs(force_index=True))
+        # 1. 启动检查：确保文档存且已建立索引
+        asyncio.run(ensure_docs_ready())
         
         # 启动后台定时更新任务
         async def scheduled_update():
@@ -406,7 +423,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.9 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.10 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
