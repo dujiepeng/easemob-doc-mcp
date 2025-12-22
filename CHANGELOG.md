@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.13] - 2025-12-22
+
+### 修复 (Bug Fixes)
+- **权限问题修复**: 移除了 Dockerfile 中的非 root 用户强制切换逻辑，改回以 root 运行。解决了在使用宿主机挂载目录 (bind mount) 时，容器内无法修改由宿主机 root 权限创建的文件导致的 `Permission denied` 错误。
+
+
 ## [1.1.12] - 2025-12-22
 
 ### 性能优化 (Performance Optimizations)

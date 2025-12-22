@@ -20,10 +20,6 @@ COPY pyproject.toml .
 # 安装Python依赖 (使用清华源加速)
 RUN pip install --no-cache-dir -r requirements.txt -i https://pypi.tuna.tsinghua.edu.cn/simple
 
-# 创建非root用户
-RUN useradd -m -u 1000 appuser && chown -R appuser:appuser /app
-USER appuser
-
 # 暴露端口
 EXPOSE 9000
 
