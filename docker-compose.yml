@@ -13,7 +13,7 @@ services:
       - .:/app
     command: python src/server.py --port 9000 --transport sse --host 0.0.0.0 --path /sse
     healthcheck:
-      test: [ "CMD", "curl", "-f", "http://localhost:9000/mcp/" ]
+      test: [ "CMD", "curl", "-f", "http://localhost:9000/sse" ]
       interval: 30s
       timeout: 10s
       retries: 3
