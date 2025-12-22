@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.4] - 2025-12-22
+
+### 部署增强 (Deployment Enhancements)
+- **Cloudflare Tunnel 集成**: 在 `docker-compose.yml` 中增加了 `cloudflared` 服务，支持通过 Cloudflare 隧道实现安全的公网访问。
+
 ## [1.1.3] - 2025-12-22
 
 ### 文档与功能优化 (Documentation & Feature Optimizations)
