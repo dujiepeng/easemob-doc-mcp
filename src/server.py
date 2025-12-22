@@ -1,3 +1,4 @@
+# -*- coding: utf-8 -*-
 from fastmcp import FastMCP
 import os
 import sys
@@ -57,10 +58,13 @@ CALLKIT_ROOT = ROOT_DIR / "callkit"
 TEMP_DIR = ROOT_DIR / "temp_docs"
 
 async def sync_all_docs(force_index: bool = False):
-    """同步所有文档 (从单仓库提取)"""
-    print(f"🚀 开始同步文档仓库 ({DOC_REPO_URL} branch:{DOC_REPO_BRANCH})...", file=sys.stderr)
-    
+    """同步所有文档 (通过下载 zip 压缩包实现，更轻快)"""
     import shutil
+    import zipfile
+    import urllib.request
+    import io
+
+    print(f"🚀 开始同步文档仓库 (Archive Mode)...", file=sys.stderr)
     
     # 1. 清理并创建临时目录
     if TEMP_DIR.exists():
@@ -68,19 +72,27 @@ async def sync_all_docs(force_index: bool = False):
     TEMP_DIR.mkdir(parents=True, exist_ok=True)
     
     try:
-        # 2. 克隆仓库 (浅克隆指定分支)
-        print(f"📦 Cloning into temporary directory...", file=sys.stderr)
-        process = await asyncio.create_subprocess_shell(
-            f"git clone --depth 1 --branch {DOC_REPO_BRANCH} {DOC_REPO_URL} {str(TEMP_DIR)}",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-        stdout, stderr = await process.communicate()
+        # 2. 下载 ZIP 压缩包
+        # GitHub Archive URL 格式: https://github.com/user/repo/archive/refs/heads/branch.zip
+        repo_base = DOC_REPO_URL.replace(".git", "")
+        zip_url = f"{repo_base}/archive/refs/heads/{DOC_REPO_BRANCH}.zip"
         
-        if process.returncode != 0:
-            print(f"❌ Git Clone 失败: {stderr.decode().strip()}", file=sys.stderr)
-            return
+        print(f"📥 Downloading: {zip_url}", file=sys.stderr)
         
+        def _download_and_extract():
+            with urllib.request.urlopen(zip_url) as response:
+                with zipfile.ZipFile(io.BytesIO(response.read())) as z:
+                    z.extractall(str(TEMP_DIR))
+            
+            # 获取解压后的顶级目录名 (通常是 repo-branch)
+            top_dirs = [d for d in os.listdir(TEMP_DIR) if os.path.isdir(TEMP_DIR / d)]
+            if not top_dirs:
+                raise Exception("ZIP 解压后未找到目录")
+            return TEMP_DIR / top_dirs[0]
+
+        extracted_root = await asyncio.to_thread(_download_and_extract)
+        print(f"✅ Extracted to: {extracted_root.name}", file=sys.stderr)
+
         # 3. 复制子目录
         subfolders = {
             "docs/document": DOC_ROOT,
@@ -90,7 +102,7 @@ async def sync_all_docs(force_index: bool = False):
         
         any_updated = force_index
         for src_rel, dest_path in subfolders.items():
-            src_path = TEMP_DIR / src_rel
+            src_path = extracted_root / src_rel
             if src_path.exists():
                 print(f"📂 Updating {dest_path.name}...", file=sys.stderr)
                 if dest_path.exists():
@@ -98,7 +110,7 @@ async def sync_all_docs(force_index: bool = False):
                 await asyncio.to_thread(shutil.copytree, str(src_path), str(dest_path))
                 any_updated = True
             else:
-                print(f"⚠️ Warning: {src_rel} 不存在于仓库中", file=sys.stderr)
+                print(f"⚠️ Warning: {src_rel} 不存在于源代码中", file=sys.stderr)
         
         # 4. 如果有更新，重建索引并清理缓存
         if any_updated:
