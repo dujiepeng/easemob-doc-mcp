@@ -352,8 +352,8 @@ async def get_document_content(
     except Exception as e:
         return {"error": str(e)}
 
-@mcp.tool()
-@log_tool_call
+# @mcp.tool()
+# @log_tool_call
 async def search_knowledge_base(
     query: str = Field(description="自然语言搜索查询，例如 '如何集成环信 IM' 或 'login error'"),
     doc_type: str = Field(default=None, description="可选，过滤文档类型: 'sdk', 'uikit', 'callkit'"),
