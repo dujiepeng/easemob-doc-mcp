@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.11] - 2025-12-22
+
+### 修复 (Bug Fixes)
+- **代码修复**: 修复了 `ensure_docs_ready` 函数中变量未定义的错误。
+- **功能恢复**: 重新启用了 `search_knowledge_base` 工具，确保搜索功能正常。
+
 ## [1.1.10] - 2025-12-22
 
 ### 功能优化 (Feature Optimizations)

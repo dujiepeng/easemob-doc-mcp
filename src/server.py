@@ -119,7 +119,7 @@ async def ensure_docs_ready():
     """启动时检查文档是否就绪，若缺失则立即同步"""
     print("📋 检查本地文档完整性...", file=sys.stderr)
     folders = [DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT]
-    missing = any(not (f.exists() and any(f.iterdir())) for f in folders)
+    missing = any(not (f.exists() and f.is_dir() and any(f.iterdir())) for f in folders)
     
     if missing:
         print("⚠️ 检测到关键文档缺失，正在启动紧急同步...", file=sys.stderr)
@@ -352,7 +352,8 @@ async def get_document_content(
     except Exception as e:
         return {"error": str(e)}
 
-# @mcp.tool()
+@mcp.tool()
+@log_tool_call
 async def search_knowledge_base(
     query: str = Field(description="自然语言搜索查询，例如 '如何集成环信 IM' 或 'login error'"),
     doc_type: str = Field(default=None, description="可选，过滤文档类型: 'sdk', 'uikit', 'callkit'"),
@@ -422,7 +423,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.10 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.11 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
