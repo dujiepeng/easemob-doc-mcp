@@ -15,9 +15,6 @@ RUN sed -i 's/deb.debian.org/mirrors.tuna.tsinghua.edu.cn/g' /etc/apt/sources.li
 # 复制项目文件
 COPY requirements.txt .
 COPY src/ ./src/
-COPY document/ ./document/
-COPY uikit/ ./uikit/
-COPY callkit/ ./callkit/
 COPY pyproject.toml .
 
 # 安装Python依赖 (使用清华源加速)

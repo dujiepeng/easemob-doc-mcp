@@ -12,8 +12,10 @@
     *   精准的中文分词与高亮摘要返回。
 *   **📂 目录结构浏览** (`search_platform_docs`):
     *   浏览 SDK, UIKit, CallKit 的特定平台文档结构。
-*   **🔄 docker 自动更新**:
-    *   Docker 容器内置定时任务，每天自动拉取最新文档 (`git pull`) 并重建索引。
+*   **🔄 docker 自动更新 & 按需同步**:
+    *   Docker 容器构建时不再依赖本地文档文件夹。
+    *   启动时会自动执行 `git clone` 拉取文档仓库、UIKit 仓库和 CallKit 仓库。
+    *   内置定时任务，每天自动执行 `git pull` 同步最新文档并重建索引。
 
 ## 🛠️ Docker 部署 (推荐)
 
@@ -28,7 +30,7 @@ docker-compose up --build -d
 ```
 
 *   服务将在 `9000` 端口启动 (SSE 模式)。
-*   首次启动会自动构建全文索引（约需几秒钟）。
+*   首次启动会自动从远程仓库拉取文档，并构建全文索引（根据网络情况可能需要一点时间）。
 
 ### 2. 外网访问 (可选)
 
@@ -122,12 +124,26 @@ python debug_search.py
 
 它会模拟几次搜索请求，并展示高亮结果。
 
+> [!NOTE]
+> 启动日志中应显示：`启动环信文档搜索MCP服务器 (v1.1.8 - Full Text Search)`
+
 ## 📦 这个项目包含什么？
 
-*   `src/server.py`: MCP 服务器核心逻辑。
+*   `src/server.py`: MCP 服务器核心逻辑（包含文档同步逻辑）。
 *   `src/indexer.py`: Whoosh 搜索引擎封装。
-*   `document/`, `uikit/`, `callkit/`: 环信技术文档（需确保本地包含这些目录）。
+*   `document/`, `uikit/`, `callkit/`: 自动同步生成的环信技术文档（容器运行时拉取，无需手动准备）。
 *   `indexdir/`: 自动生成的索引文件（请勿提交到 Git）。
+
+## ⚙️ 环境变量
+
+| 变量 | 描述 | 默认值 |
+| --- | --- | --- |
+| `DOC_REPO_URL` | 文档仓库 Git 地址 | `https://github.com/easemob/easemob-doc.git` |
+| `UIKIT_REPO_URL` | UIKit 仓库 Git 地址 | `https://github.com/easemob/easemob-uikit-doc.git` |
+| `CALLKIT_REPO_URL` | CallKit 仓库 Git 地址 | `https://github.com/easemob/easemob-callkit-doc.git` |
+| `DOC_UPDATE_INTERVAL_SECONDS` | 文档更新时间间隔 (秒) | `86400` (24小时) |
+| `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel 令牌 | (无) |
+
 
 ## License
 

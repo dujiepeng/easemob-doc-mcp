@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.8] - 2025-12-22
+
+### 功能优化 (Feature Optimizations)
+- **运行时文档同步**: 移除了 Docker 构建时对文档文件夹的依赖。现在文档、UIKit 和 CallKit 仓库会在容器启动时自动拉取 (`git clone`)，并定期进行同步 (`git pull`)。
+- **环境隔离**: 即使本地没有文档文件夹，也可以成功构建 Docker 镜像。
+
 ## [1.1.7] - 2025-12-22
 
 ### 修复 (Bug Fixes)

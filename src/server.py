@@ -45,12 +45,75 @@ def log_tool_call(func):
             raise e
     return wrapper
 
+# 文档仓库配置
+DOC_REPO_URL = os.environ.get("DOC_REPO_URL", "https://github.com/easemob/easemob-doc.git")
+UIKIT_REPO_URL = os.environ.get("UIKIT_REPO_URL", "https://github.com/easemob/easemob-uikit-doc.git")
+CALLKIT_REPO_URL = os.environ.get("CALLKIT_REPO_URL", "https://github.com/easemob/easemob-callkit-doc.git")
+
 # 文档根目录
-DOC_ROOT = Path(__file__).parent.parent / "document"
+ROOT_DIR = Path(__file__).parent.parent
+DOC_ROOT = ROOT_DIR / "document"
 # UIKit文档目录
-UIKIT_ROOT = Path(__file__).parent.parent / "uikit"
+UIKIT_ROOT = ROOT_DIR / "uikit"
 # CallKit文档目录
-CALLKIT_ROOT = Path(__file__).parent.parent / "callkit"
+CALLKIT_ROOT = ROOT_DIR / "callkit"
+
+async def sync_repo(repo_url: str, target_dir: Path):
+    """同步单个 Git 仓库"""
+    target_dir_str = str(target_dir)
+    if not target_dir.exists() or not (target_dir / ".git").exists():
+        print(f"📦 Cloning {repo_url} into {target_dir}...", file=sys.stderr)
+        if target_dir.exists():
+            # 如果目录存在但不是 git 仓库，清空它以便 clone
+            import shutil
+            await asyncio.to_thread(shutil.rmtree, target_dir_str)
+        
+        process = await asyncio.create_subprocess_shell(
+            f"git clone {repo_url} {target_dir_str}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+    else:
+        print(f"🔄 Pulling {repo_url} in {target_dir}...", file=sys.stderr)
+        process = await asyncio.create_subprocess_shell(
+            "git pull",
+            cwd=target_dir_str,
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+    
+    stdout, stderr = await process.communicate()
+    if process.returncode == 0:
+        return True, stdout.decode().strip()
+    else:
+        return False, stderr.decode().strip()
+
+async def sync_all_docs(force_index: bool = False):
+    """同步所有文档"""
+    print("🚀 开始同步文档仓库...", file=sys.stderr)
+    tasks = [
+        sync_repo(DOC_REPO_URL, DOC_ROOT),
+        sync_repo(UIKIT_REPO_URL, UIKIT_ROOT),
+        sync_repo(CALLKIT_REPO_URL, CALLKIT_ROOT)
+    ]
+    results = await asyncio.gather(*tasks)
+    
+    any_updated = force_index
+    for i, (success, output) in enumerate(results):
+        repo_name = ["document", "uikit", "callkit"][i]
+        if success:
+            if "Already up to date" not in output and "Cloning into" not in output:
+                any_updated = True
+            print(f"✅ {repo_name} 同步成功", file=sys.stderr)
+        else:
+            print(f"❌ {repo_name} 同步失败: {output}", file=sys.stderr)
+    
+    if any_updated:
+        print("🔍 文档有更新，重建索引并清理缓存...", file=sys.stderr)
+        _scan_directory_docs.cache_clear()
+        await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
+    else:
+        print("✨ 所有文档已是最新，跳过索引重建。", file=sys.stderr)
 
 def _read_file_content(path: str) -> str:
     """同步读取文件内容"""
@@ -302,11 +365,10 @@ def main():
     # 所以我们在 main 中先运行一次索引构建（同步阻塞方式，或者 fire-and-forget）
     # 为了简单起见，我们使用 asyncio.run 来执行索引构建，然后再启动 MCP
     
-    print("正在初始化搜索引擎...", file=sys.stderr)
+    print("正在初始化文档与搜索引擎...", file=sys.stderr)
     try:
-        # 生产环境通常建议每次重建以保证数据一致性，但可以通过参数控制
-        # 这里默认重建 (rebuild=True)
-        asyncio.run(build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True))
+        # 1. 首先确保文档存在（启动时立即拉取一次）
+        asyncio.run(sync_all_docs(force_index=True))
         
         # 启动后台定时更新任务
         async def scheduled_update():
@@ -319,26 +381,8 @@ def main():
                     await asyncio.sleep(update_interval)
                     
                     print("⏰ 开始执行定时更新...", file=sys.stderr)
-                    # 1. 执行 git pull
-                    process = await asyncio.create_subprocess_shell(
-                        "git pull",
-                        stdout=asyncio.subprocess.PIPE,
-                        stderr=asyncio.subprocess.PIPE
-                    )
-                    stdout, stderr = await process.communicate()
-                    
-                    if process.returncode == 0:
-                        print(f"✅ Git Pull 成功:\n{stdout.decode().strip()}", file=sys.stderr)
-                        # 2. 如果有更新，重建索引并清理缓存
-                        if "Already up to date" not in stdout.decode():
-                            print("文档有变动，正在重建索引并清理缓存...", file=sys.stderr)
-                            # 清理目录扫描缓存
-                            _scan_directory_docs.cache_clear()
-                            await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
-                        else:
-                            print("文档无变动，跳过索引重建。", file=sys.stderr)
-                    else:
-                        print(f"❌ Git Pull 失败:\n{stderr.decode().strip()}", file=sys.stderr)
+                    # 执行全量更新
+                    await sync_all_docs()
                         
                 except Exception as e:
                     print(f"定时更新任务出错: {e}", file=sys.stderr)
@@ -362,7 +406,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.3 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.8 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
