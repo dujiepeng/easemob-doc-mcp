@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.7] - 2025-12-22
+
+### 修复 (Bug Fixes)
+- **SSE 连接修复**: 针对 SSE 初始化报错 `missing endpoint`，重新将服务路径显式设置为 `/sse`，以提高与各 MCP 客户端（特别是通过外网隧道时）的兼容性。
+
 ## [1.1.6] - 2025-12-22
 
 ### 功能优化 (Feature Optimizations)

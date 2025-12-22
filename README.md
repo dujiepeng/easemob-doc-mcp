@@ -84,15 +84,15 @@ volumes:
     *   **Type**: `command` (本地运行) 或 `sse` (Docker 远程)
     
     **方式 A: Docker (SSE)**
-    *   **Url**: `http://localhost:9000/`
+    *   **Url**: `http://localhost:9000/sse`
 
     **方式 B: 本地运行 (SSE)**
     *   首先在项目根目录启动服务：
         ```bash
-        python src/server.py --port 9000 --transport sse --path /
+        python src/server.py --port 9000 --transport sse --path /sse
         ```
     *   在 Cursor 中填写：
-        *   **Url**: `http://localhost:9000/`
+        *   **Url**: `http://localhost:9000/sse`
 
     **方式 C: 本地运行 (Command - 传统模式)**
     *   **Command**: `python /绝对路径/to/easemob-doc-mcp/src/server.py`
@@ -106,7 +106,7 @@ volumes:
 {
   "mcpServers": {
     "easemob-docs": {
-      "url": "https://mcp-servers.dujiepeng.top/"
+      "url": "https://mcp-servers.dujiepeng.top/sse"
     }
   }
 }
