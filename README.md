@@ -73,9 +73,17 @@ volumes:
     **方式 A: Docker (SSE)**
     *   **Url**: `http://localhost:9000/sse`
 
-    **方式 B: 本地 Python 运行**
+    **方式 B: 本地运行 (SSE)**
+    *   首先在项目根目录启动服务：
+        ```bash
+        python src/server.py --port 9000 --transport sse
+        ```
+    *   在 Cursor 中填写：
+        *   **Url**: `http://localhost:9000/sse`
+
+    **方式 C: 本地运行 (Command - 传统模式)**
     *   **Command**: `python /绝对路径/to/easemob-doc-mcp/src/server.py`
-    *   (注意：推荐使用 Docker 方式以获得更稳定的环境)
+    *   (注意：推荐使用 SSE 模式，因为它在处理长连接和多查询时更稳定)
 
 ### Claude Desktop 使用
 

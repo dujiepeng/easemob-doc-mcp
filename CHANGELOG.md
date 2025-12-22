@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.3] - 2025-12-22
+
+### 文档与功能优化 (Documentation & Feature Optimizations)
+- **本地 SSE 指南**: 在 README 中增加了如何以 SSE 模式启动本地服务器的说明，方便用户在不使用 Docker 的情况下也能通过 SSE 协议连接客户端（如 Cursor）。
+- **版本一致性**: 修正了启动日志中显示的版本号。
+
 ## [1.1.2] - 2025-12-22
 
 ### 文档更新 (Documentation Updates)
