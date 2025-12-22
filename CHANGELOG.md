@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.2] - 2025-12-22
+
+### 文档更新 (Documentation Updates)
+- **README 增强**: 增加了 Docker 模式下链接本地环境的详细说明，解释了卷挂载的作用及其带来的开发便利性。
+- **版本迭代**: 升级至 1.1.2。
+
 ## [1.1.1] - 2025-12-19
 
 ### 维护与优化 (Maintenance & Optimization)

@@ -44,6 +44,20 @@ export DOC_UPDATE_INTERVAL_SECONDS=3600
 docker-compose up -d
 ```
 
+### 3. Docker 模式下的本地链接
+
+在 `docker-compose.yml` 中，我们将当前目录挂载到了容器的 `/app` 目录：
+
+```yaml
+volumes:
+  - .:/app
+```
+
+这意味着：
+*   **双向同步**：容器内对文档的更新（`git pull`）和索引的构建会直接反映在宿主机的磁盘上。
+*   **开发便利**：您可以在宿主机上直接修改 `src/` 下的代码，容器会自动应用这些更改（如果使用了支持热重载的机制，或者重启容器 `docker-compose restart`）。
+*   **环境一致**：即便在不同机器上，只要运行 Docker，就能获得完全一致的搜索环境和依赖配置。
+
 ## 🔌 MCP Client 使用指南
 
 部署成功后，您可以将此服务连接到支持 MCP 的客户端。
