@@ -47,73 +47,73 @@ def log_tool_call(func):
 
 # 文档仓库配置
 DOC_REPO_URL = os.environ.get("DOC_REPO_URL", "https://github.com/easemob/easemob-doc.git")
-UIKIT_REPO_URL = os.environ.get("UIKIT_REPO_URL", "https://github.com/easemob/easemob-uikit-doc.git")
-CALLKIT_REPO_URL = os.environ.get("CALLKIT_REPO_URL", "https://github.com/easemob/easemob-callkit-doc.git")
+DOC_REPO_BRANCH = os.environ.get("DOC_REPO_BRANCH", "doc-v2")
 
 # 文档根目录
 ROOT_DIR = Path(__file__).parent.parent
 DOC_ROOT = ROOT_DIR / "document"
-# UIKit文档目录
 UIKIT_ROOT = ROOT_DIR / "uikit"
-# CallKit文档目录
 CALLKIT_ROOT = ROOT_DIR / "callkit"
-
-async def sync_repo(repo_url: str, target_dir: Path):
-    """同步单个 Git 仓库"""
-    target_dir_str = str(target_dir)
-    if not target_dir.exists() or not (target_dir / ".git").exists():
-        print(f"📦 Cloning {repo_url} into {target_dir}...", file=sys.stderr)
-        if target_dir.exists():
-            # 如果目录存在但不是 git 仓库，清空它以便 clone
-            import shutil
-            await asyncio.to_thread(shutil.rmtree, target_dir_str)
-        
-        process = await asyncio.create_subprocess_shell(
-            f"git clone {repo_url} {target_dir_str}",
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-    else:
-        print(f"🔄 Pulling {repo_url} in {target_dir}...", file=sys.stderr)
-        process = await asyncio.create_subprocess_shell(
-            "git pull",
-            cwd=target_dir_str,
-            stdout=asyncio.subprocess.PIPE,
-            stderr=asyncio.subprocess.PIPE
-        )
-    
-    stdout, stderr = await process.communicate()
-    if process.returncode == 0:
-        return True, stdout.decode().strip()
-    else:
-        return False, stderr.decode().strip()
+TEMP_DIR = ROOT_DIR / "temp_docs"
 
 async def sync_all_docs(force_index: bool = False):
-    """同步所有文档"""
-    print("🚀 开始同步文档仓库...", file=sys.stderr)
-    tasks = [
-        sync_repo(DOC_REPO_URL, DOC_ROOT),
-        sync_repo(UIKIT_REPO_URL, UIKIT_ROOT),
-        sync_repo(CALLKIT_REPO_URL, CALLKIT_ROOT)
-    ]
-    results = await asyncio.gather(*tasks)
+    """同步所有文档 (从单仓库提取)"""
+    print(f"🚀 开始同步文档仓库 ({DOC_REPO_URL} branch:{DOC_REPO_BRANCH})...", file=sys.stderr)
     
-    any_updated = force_index
-    for i, (success, output) in enumerate(results):
-        repo_name = ["document", "uikit", "callkit"][i]
-        if success:
-            if "Already up to date" not in output and "Cloning into" not in output:
+    import shutil
+    
+    # 1. 清理并创建临时目录
+    if TEMP_DIR.exists():
+        await asyncio.to_thread(shutil.rmtree, str(TEMP_DIR))
+    TEMP_DIR.mkdir(parents=True, exist_ok=True)
+    
+    try:
+        # 2. 克隆仓库 (浅克隆指定分支)
+        print(f"📦 Cloning into temporary directory...", file=sys.stderr)
+        process = await asyncio.create_subprocess_shell(
+            f"git clone --depth 1 --branch {DOC_REPO_BRANCH} {DOC_REPO_URL} {str(TEMP_DIR)}",
+            stdout=asyncio.subprocess.PIPE,
+            stderr=asyncio.subprocess.PIPE
+        )
+        stdout, stderr = await process.communicate()
+        
+        if process.returncode != 0:
+            print(f"❌ Git Clone 失败: {stderr.decode().strip()}", file=sys.stderr)
+            return
+        
+        # 3. 复制子目录
+        subfolders = {
+            "docs/document": DOC_ROOT,
+            "docs/uikit": UIKIT_ROOT,
+            "docs/callkit": CALLKIT_ROOT
+        }
+        
+        any_updated = force_index
+        for src_rel, dest_path in subfolders.items():
+            src_path = TEMP_DIR / src_rel
+            if src_path.exists():
+                print(f"📂 Updating {dest_path.name}...", file=sys.stderr)
+                if dest_path.exists():
+                    await asyncio.to_thread(shutil.rmtree, str(dest_path))
+                await asyncio.to_thread(shutil.copytree, str(src_path), str(dest_path))
                 any_updated = True
-            print(f"✅ {repo_name} 同步成功", file=sys.stderr)
+            else:
+                print(f"⚠️ Warning: {src_rel} 不存在于仓库中", file=sys.stderr)
+        
+        # 4. 如果有更新，重建索引并清理缓存
+        if any_updated:
+            print("🔍 文档有更新，重建索引并清理缓存...", file=sys.stderr)
+            _scan_directory_docs.cache_clear()
+            await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
         else:
-            print(f"❌ {repo_name} 同步失败: {output}", file=sys.stderr)
-    
-    if any_updated:
-        print("🔍 文档有更新，重建索引并清理缓存...", file=sys.stderr)
-        _scan_directory_docs.cache_clear()
-        await build_index_async(DOC_ROOT, UIKIT_ROOT, CALLKIT_ROOT, rebuild=True)
-    else:
-        print("✨ 所有文档已是最新，跳过索引重建。", file=sys.stderr)
+            print("✨ 文档无变动，跳过索引重建。", file=sys.stderr)
+            
+    except Exception as e:
+        print(f"❌ 同步过程中出错: {e}", file=sys.stderr)
+    finally:
+        # 5. 清理临时目录
+        if TEMP_DIR.exists():
+            await asyncio.to_thread(shutil.rmtree, str(TEMP_DIR))
 
 def _read_file_content(path: str) -> str:
     """同步读取文件内容"""
@@ -406,7 +406,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.8 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.9 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":

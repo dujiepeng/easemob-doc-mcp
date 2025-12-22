@@ -14,8 +14,9 @@
     *   浏览 SDK, UIKit, CallKit 的特定平台文档结构。
 *   **🔄 docker 自动更新 & 按需同步**:
     *   Docker 容器构建时不再依赖本地文档文件夹。
-    *   启动时会自动执行 `git clone` 拉取文档仓库、UIKit 仓库和 CallKit 仓库。
-    *   内置定时任务，每天自动执行 `git pull` 同步最新文档并重建索引。
+    *   启动时会自动克隆 `easemob-doc` 仓库的 `doc-v2` 分支。
+    *   自动提取并同步 `docs/document`, `docs/uikit`, `docs/callkit` 子目录。
+    *   内置定时任务，每天自动同步最新文档并重建索引。
 
 ## 🛠️ Docker 部署 (推荐)
 
@@ -139,8 +140,7 @@ python debug_search.py
 | 变量 | 描述 | 默认值 |
 | --- | --- | --- |
 | `DOC_REPO_URL` | 文档仓库 Git 地址 | `https://github.com/easemob/easemob-doc.git` |
-| `UIKIT_REPO_URL` | UIKit 仓库 Git 地址 | `https://github.com/easemob/easemob-uikit-doc.git` |
-| `CALLKIT_REPO_URL` | CallKit 仓库 Git 地址 | `https://github.com/easemob/easemob-callkit-doc.git` |
+| `DOC_REPO_BRANCH` | 文档仓库分支 | `doc-v2` |
 | `DOC_UPDATE_INTERVAL_SECONDS` | 文档更新时间间隔 (秒) | `86400` (24小时) |
 | `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel 令牌 | (无) |
 

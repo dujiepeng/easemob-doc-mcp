@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.9] - 2025-12-22
+
+### 功能优化 (Feature Optimizations)
+- **同步逻辑精细化**: 根据实际仓库结构更新了同步逻辑。现在支持从 `easemob-doc` 仓库的 `doc-v2` 分支提取 `docs/` 下的子目录。
+- **配置项变更**: 移除了 `UIKIT_REPO_URL` 和 `CALLKIT_REPO_URL`，新增 `DOC_REPO_BRANCH` 配置。
+
 ## [1.1.8] - 2025-12-22
 
 ### 功能优化 (Feature Optimizations)
