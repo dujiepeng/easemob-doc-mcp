@@ -55,7 +55,7 @@ ROOT_DIR = Path(__file__).parent.parent
 DOC_ROOT = ROOT_DIR / "document"
 UIKIT_ROOT = ROOT_DIR / "uikit"
 CALLKIT_ROOT = ROOT_DIR / "callkit"
-TEMP_DIR = ROOT_DIR / "temp_docs"
+TEMP_DIR = Path("/tmp/temp_docs")  # 使用 /tmp 避免 Docker 挂卷时的权限问题
 
 async def sync_all_docs(force_index: bool = False):
     """同步所有文档 (通过下载 zip 压缩包实现，更轻快)"""
