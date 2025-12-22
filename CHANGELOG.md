@@ -1,5 +1,11 @@
 # Changelog
 
+## [1.1.6] - 2025-12-22
+
+### 功能优化 (Feature Optimizations)
+- **路径简化**: 将 SSE 服务的默认访问路径从 `/mcp/` 简化为 `/`，使得在使用自定义域名（如 `https://mcp-servers.dujiepeng.top/`）时配置更加直观。
+- **文档更新**: README 中的配置示例已更新为最新的根路径格式。
+
 ## [1.1.5] - 2025-12-22
 
 ### 安全性增强 (Security Enhancements)

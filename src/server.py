@@ -293,7 +293,7 @@ def main():
     parser.add_argument("--transport", "-t", choices=["stdio", "http", "sse"], default="http")
     parser.add_argument("--host", default="0.0.0.0")
     parser.add_argument("--port", "-p", type=int, default=443)
-    parser.add_argument("--path", default="/mcp/")
+    parser.add_argument("--path", default="/")
     
     args = parser.parse_args()
     

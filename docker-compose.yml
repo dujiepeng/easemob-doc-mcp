@@ -11,7 +11,7 @@ services:
       # 挂载当前目录到 /app，确保容器内能执行 git pull 并更新宿主机文件
       # 同时也持久化了 indexdir 索引索引文件
       - .:/app
-    command: python src/server.py --port 9000 --transport sse --host 0.0.0.0
+    command: python src/server.py --port 9000 --transport sse --host 0.0.0.0 --path /
     healthcheck:
       test: [ "CMD", "curl", "-f", "http://localhost:9000/mcp/" ]
       interval: 30s
