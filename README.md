@@ -34,7 +34,11 @@ docker-compose up --build -d
 
 配置中已集成 **Cloudflare Tunnel**，启动后会自动建立安全隧道，以便您在公网环境下也能访问此 MCP 服务。
 
-运行以下命令启动包含隧道的全量服务：
+1. 在项目根目录创建 `.env` 文件：
+   ```bash
+   CLOUDFLARE_TUNNEL_TOKEN=您的隧道Token
+   ```
+2. 运行以下命令启动包含隧道的全量服务：
 ```bash
 docker-compose up -d
 ```

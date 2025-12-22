@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.5] - 2025-12-22
+
+### 安全性增强 (Security Enhancements)
+- **敏感信息脱敏**: 将 `docker-compose.yml` 中的 Cloudflare Tunnel Token 移至环境变量。现在需要通过根目录下的 `.env` 文件配置 `CLOUDFLARE_TUNNEL_TOKEN`。
+
 ## [1.1.4] - 2025-12-22
 
 ### 部署增强 (Deployment Enhancements)
