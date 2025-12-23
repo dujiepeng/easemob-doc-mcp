@@ -435,7 +435,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.13 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.16 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
