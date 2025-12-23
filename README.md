@@ -33,19 +33,6 @@ docker-compose up --build -d
 *   服务将在 `9000` 端口启动 (SSE 模式)。
 *   首次启动会自动从远程仓库拉取文档，并构建全文索引（根据网络情况可能需要一点时间）。
 
-### 2. 外网访问 (可选)
-
-配置中已集成 **Cloudflare Tunnel**，启动后会自动建立安全隧道，以便您在公网环境下也能访问此 MCP 服务。
-
-1. 在项目根目录创建 `.env` 文件：
-   ```bash
-   CLOUDFLARE_TUNNEL_TOKEN=您的隧道Token
-   ```
-2. 运行以下命令启动包含隧道的全量服务：
-```bash
-docker-compose up -d
-```
-
 ### 2. 自动更新机制
 
 默认情况下，容器会 **每 24 小时** 执行一次 `git pull`：
@@ -142,7 +129,6 @@ python debug_search.py
 | `DOC_REPO_URL` | 文档仓库 Git 地址 | `https://github.com/easemob/easemob-doc.git` |
 | `DOC_REPO_BRANCH` | 文档仓库分支 | `doc-v2` |
 | `DOC_UPDATE_INTERVAL_SECONDS` | 文档更新时间间隔 (秒) | `86400` (24小时) |
-| `CLOUDFLARE_TUNNEL_TOKEN` | Cloudflare Tunnel 令牌 | (无) |
 
 
 ## License

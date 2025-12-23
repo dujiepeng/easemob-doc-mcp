@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.14] - 2025-12-23
+
+### 变更 (Changes)
+- **移除 Cloudflare Tunnel**: 删除了 `docker-compose.yml` 中的 `cloudflared` 服务及相关的配置和文档说明。
+
 ## [1.1.13] - 2025-12-22
 
 ### 修复 (Bug Fixes)
