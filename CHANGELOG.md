@@ -1,5 +1,10 @@
 # Changelog
 
+## [1.1.18] - 2025-12-23
+
+### 修复 (Bug Fixes)
+- **启动修复**: 修复 `FastMCP.custom_route` 因缺失 `methods` 参数导致的 `TypeError` 启动异常。
+
 ## [1.1.17] - 2025-12-23
 
 ### 变更 (Changes)

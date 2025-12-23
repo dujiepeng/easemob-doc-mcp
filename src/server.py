@@ -21,7 +21,7 @@ except ImportError:
 # 创建FastMCP实例
 mcp = FastMCP()
 
-@mcp.custom_route("/")
+@mcp.custom_route("/", methods=["GET"])
 async def root_redirect():
     """将根路径请求重定向到 /sse，解决其他服务的 404 问题"""
     return RedirectResponse(url="/sse")
