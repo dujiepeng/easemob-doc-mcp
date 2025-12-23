@@ -23,4 +23,5 @@ services:
 
 networks:
   docker_default:
-    external: true
+    driver: bridge
+    name: docker_default
