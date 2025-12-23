@@ -2,8 +2,7 @@ services:
   easemob-doc-mcp:
     build: .
     container_name: easemob-doc-mcp
-    ports:
-      - "9000:9000"
+    network_mode: host
     restart: unless-stopped
     environment:
       - PYTHONUNBUFFERED=1
