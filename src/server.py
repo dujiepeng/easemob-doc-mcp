@@ -9,6 +9,7 @@ from pathlib import Path
 from pydantic import Field
 from functools import lru_cache, wraps
 import json
+from starlette.responses import RedirectResponse
 try:
     from .indexer import global_indexer, build_index_async
 except ImportError:
@@ -19,6 +20,11 @@ except ImportError:
 
 # 创建FastMCP实例
 mcp = FastMCP()
+
+@mcp.custom_route("/")
+async def root_redirect():
+    """将根路径请求重定向到 /sse，解决其他服务的 404 问题"""
+    return RedirectResponse(url="/sse")
 
 # --- 日志系统 ---
 def log_tool_call(func):
