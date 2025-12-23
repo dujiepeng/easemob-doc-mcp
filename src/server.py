@@ -26,6 +26,11 @@ async def root_redirect():
     """将根路径请求重定向到 /sse，解决其他服务的 404 问题"""
     return RedirectResponse(url="/sse")
 
+@mcp.custom_route("/mcp/", methods=["GET"])
+async def mcp_redirect():
+    """将旧的 /mcp/ 路径请求重定向到 /sse"""
+    return RedirectResponse(url="/sse")
+
 # --- 日志系统 ---
 def log_tool_call(func):
     """工具调用日志装饰器，输出到 stderr 以免干扰 stdio 传输"""
@@ -441,7 +446,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.17 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.19 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
