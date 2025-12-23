@@ -4,7 +4,7 @@ build-backend = "setuptools.build_meta"
 
 [project]
 name = "easemob-doc-mcp"
-version = "1.1.19"
+version = "1.1.20"
 description = "环信文档搜索 MCP 服务"
 authors = [
     {name = "dujiepeng", email = "dujiepeng@example.com"}

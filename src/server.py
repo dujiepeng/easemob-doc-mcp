@@ -9,7 +9,6 @@ from pathlib import Path
 from pydantic import Field
 from functools import lru_cache, wraps
 import json
-from starlette.responses import RedirectResponse
 try:
     from .indexer import global_indexer, build_index_async
 except ImportError:
@@ -20,16 +19,6 @@ except ImportError:
 
 # 创建FastMCP实例
 mcp = FastMCP()
-
-@mcp.custom_route("/", methods=["GET"])
-async def root_redirect():
-    """将根路径请求重定向到 /sse，解决其他服务的 404 问题"""
-    return RedirectResponse(url="/sse")
-
-@mcp.custom_route("/mcp/", methods=["GET"])
-async def mcp_redirect():
-    """将旧的 /mcp/ 路径请求重定向到 /sse"""
-    return RedirectResponse(url="/sse")
 
 # --- 日志系统 ---
 def log_tool_call(func):
@@ -446,7 +435,7 @@ def main():
         print(f"索引构建失败: {e}", file=sys.stderr)
         print("服务将继续运行，但搜索功能可能不可用。", file=sys.stderr)
     
-    print(f"启动环信文档搜索MCP服务器 (v1.1.19 - Full Text Search)", file=sys.stderr)
+    print(f"启动环信文档搜索MCP服务器 (v1.1.20 - Full Text Search)", file=sys.stderr)
     if args.transport == "stdio":
         mcp.run(transport="stdio")
     elif args.transport == "sse":
