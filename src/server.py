@@ -1,21 +1,23 @@
 # -*- coding: utf-8 -*-
-from fastmcp import FastMCP
-import os
-import sys
 import argparse
 import asyncio
-from typing import List, Dict, Any, Union
-from pathlib import Path
-from pydantic import Field
-from functools import lru_cache, wraps
 import json
+import os
+import sys
+from functools import lru_cache, wraps
+from pathlib import Path
+from typing import Any, Dict, List, Union
+
+from fastmcp import FastMCP
+from pydantic import Field
+
 try:
-    from .indexer import global_indexer, build_index_async
+    from .indexer import build_index_async, global_indexer
 except ImportError:
     try:
-        from src.indexer import global_indexer, build_index_async
+        from src.indexer import build_index_async, global_indexer
     except ImportError:
-        from indexer import global_indexer, build_index_async
+        from indexer import build_index_async, global_indexer
 
 # 创建FastMCP实例
 mcp = FastMCP()
@@ -57,14 +59,23 @@ UIKIT_ROOT = ROOT_DIR / "uikit"
 CALLKIT_ROOT = ROOT_DIR / "callkit"
 TEMP_DIR = Path("/tmp/temp_docs")  # 使用 /tmp 避免 Docker 挂卷时的权限问题
 
+# 全局标志，用于优雅关闭（延迟初始化）
+_shutdown_event = None  # 将在 main() 中初始化
+
 async def sync_all_docs(force_index: bool = False):
     """同步所有文档 (通过下载 zip 压缩包实现，更轻快)"""
-    import shutil
-    import zipfile
-    import urllib.request
     import io
+    import shutil
+    import urllib.request
+    import zipfile
 
     print(f"🚀 开始同步文档仓库 (Archive Mode)...", file=sys.stderr)
+    
+    # 检查是否正在关闭
+    global _shutdown_event
+    if _shutdown_event and _shutdown_event.is_set():
+        print("服务正在关闭，跳过文档同步", file=sys.stderr)
+        return
     
     # 1. 清理并创建临时目录
     if TEMP_DIR.exists():
@@ -80,9 +91,47 @@ async def sync_all_docs(force_index: bool = False):
         print(f"📥 Downloading: {zip_url}", file=sys.stderr)
         
         def _download_and_extract():
-            with urllib.request.urlopen(zip_url) as response:
-                with zipfile.ZipFile(io.BytesIO(response.read())) as z:
-                    z.extractall(str(TEMP_DIR))
+            # 设置超时和请求头
+            import socket
+            socket.setdefaulttimeout(300)  # 5分钟超时
+            
+            req = urllib.request.Request(zip_url)
+            req.add_header('User-Agent', 'Mozilla/5.0')
+            
+            print(f"开始下载 ZIP 文件...", file=sys.stderr)
+            try:
+                with urllib.request.urlopen(req, timeout=300) as response:
+                    # 分块读取，避免一次性加载到内存
+                    chunk_size = 8192
+                    data = io.BytesIO()
+                    total_size = 0
+                    
+                    while True:
+                        # 检查是否正在关闭
+                        if _shutdown_event and _shutdown_event.is_set():
+                            print("检测到关闭信号，中断下载", file=sys.stderr)
+                            raise KeyboardInterrupt("服务正在关闭")
+                        
+                        chunk = response.read(chunk_size)
+                        if not chunk:
+                            break
+                        data.write(chunk)
+                        total_size += len(chunk)
+                        if total_size % (10 * 1024 * 1024) == 0:  # 每 10MB 打印一次
+                            print(f"已下载: {total_size / 1024 / 1024:.1f} MB", file=sys.stderr)
+                    
+                    print(f"下载完成，总大小: {total_size / 1024 / 1024:.1f} MB", file=sys.stderr)
+                    data.seek(0)
+                    
+                    print("开始解压 ZIP 文件...", file=sys.stderr)
+                    with zipfile.ZipFile(data) as z:
+                        z.extractall(str(TEMP_DIR))
+                    print("解压完成", file=sys.stderr)
+            except (KeyboardInterrupt, SystemExit):
+                raise
+            except Exception as e:
+                print(f"下载或解压失败: {e}", file=sys.stderr)
+                raise
             
             # 获取解压后的顶级目录名 (通常是 repo-branch)
             top_dirs = [d for d in os.listdir(TEMP_DIR) if os.path.isdir(TEMP_DIR / d)]
@@ -400,27 +449,67 @@ def main():
         asyncio.run(ensure_docs_ready())
         
         # 启动后台定时更新任务
+        import signal
+        import threading
+
+        # 初始化关闭事件
+        import threading
+        global _shutdown_event
+        if _shutdown_event is None:
+            _shutdown_event = threading.Event()
+        
+        # 信号处理函数
+        def signal_handler(signum, frame):
+            print(f"\n收到信号 {signum}，开始优雅关闭...", file=sys.stderr)
+            _shutdown_event.set()
+            # 给主进程一些时间清理
+            import time
+            time.sleep(2)
+            sys.exit(0)
+        
+        # 注册信号处理器
+        signal.signal(signal.SIGTERM, signal_handler)
+        signal.signal(signal.SIGINT, signal_handler)
+        
         async def scheduled_update():
-            while True:
+            while _shutdown_event is None or not _shutdown_event.is_set():
                 # 每天更新一次 (24 * 3600 秒)
                 # 为了便于测试，可以通过环境变量设置间隔，默认 86400 秒
                 try:
                     update_interval = int(os.environ.get("DOC_UPDATE_INTERVAL_SECONDS", 86400))
                     print(f"下次文档更新将在 {update_interval} 秒后执行...", file=sys.stderr)
-                    await asyncio.sleep(update_interval)
+                    
+                    # 分段等待，以便能够响应关闭信号
+                    waited = 0
+                    check_interval = min(60, update_interval)  # 每60秒或更短检查一次
+                    while waited < update_interval and (_shutdown_event is None or not _shutdown_event.is_set()):
+                        await asyncio.sleep(min(check_interval, update_interval - waited))
+                        waited += check_interval
+                    
+                    if _shutdown_event is not None and _shutdown_event.is_set():
+                        break
                     
                     print("⏰ 开始执行定时更新...", file=sys.stderr)
                     # 执行全量更新
                     await sync_all_docs()
                         
+                except (KeyboardInterrupt, SystemExit):
+                    break
                 except Exception as e:
-                    print(f"定时更新任务出错: {e}", file=sys.stderr)
-                    await asyncio.sleep(60) # 出错后等待 1 分钟重试
+                    if _shutdown_event is None or not _shutdown_event.is_set():
+                        print(f"定时更新任务出错: {e}", file=sys.stderr)
+                        await asyncio.sleep(60) # 出错后等待 1 分钟重试
+                    else:
+                        break
+            
+            print("定时更新任务已退出", file=sys.stderr)
 
         # 在后台启动任务，不阻塞主线程
-        import threading
         def run_schedule():
-            asyncio.run(scheduled_update())
+            try:
+                asyncio.run(scheduled_update())
+            except (KeyboardInterrupt, SystemExit):
+                pass
         
         # 注意: mcp.run() 是阻塞的，所以这里用简单的线程或者在 mcp 内部机制中启动
         # FastMCP 目前可以直接运行，我们把 asyncio task 放到事件循环里最好
